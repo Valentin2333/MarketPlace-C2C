@@ -79,7 +79,7 @@ export default function Navbar() {
             {user ? (
               <>
                 <Link
-                  to="/profile"
+                  to={`/profile/${user.id}`}
                   className={`${styles.navLink} ${isActive('/profile') ? styles.navLinkActive : ''}`}
                 >
                   Profile
@@ -130,7 +130,7 @@ export default function Navbar() {
           {user ? (
             <>
               <Link
-                to="/profile"
+                to={`/profile/${user.id}`}
                 className={`${styles.mobileLink} ${isActive('/profile') ? styles.mobileLinkActive : ''}`}
               >
                 Profile
