@@ -22,6 +22,7 @@ export default function ProfilePage() {
   const { id } = useParams<{ id: string }>()
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
 
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -33,6 +34,9 @@ export default function ProfilePage() {
 
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const [pwSending, setPwSending] = useState(false)
+  const [pwMsg, setPwMsg] = useState<string | null>(null)
 
   const {
     register,
@@ -46,6 +50,7 @@ export default function ProfilePage() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setCurrentUserId(user?.id ?? null)
+      setCurrentUserEmail(user?.email ?? null)
     })
   }, [])
 
@@ -58,6 +63,7 @@ export default function ProfilePage() {
       setNotFound(false)
       setSaveMsg(null)
       setServerError(null)
+      setPwMsg(null)
 
       const { data, error } = await supabase
         .from('profiles')
@@ -158,6 +164,25 @@ export default function ProfilePage() {
     setProfile((prev) => (prev ? { ...prev, avatar_url: bustedUrl } : prev))
     setSaveMsg('Avatar updated.')
     if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const onChangePassword = async () => {
+    if (!isOwner || !currentUserEmail) return
+    setPwSending(true)
+    setPwMsg(null)
+    setServerError(null)
+
+    const { error } = await supabase.auth.resetPasswordForEmail(currentUserEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+
+    setPwSending(false)
+
+    if (error) {
+      setServerError(error.message)
+      return
+    }
+    setPwMsg(`We've sent a password reset link to ${currentUserEmail}.`)
   }
 
   const initials = (profile?.name ?? '?')
@@ -273,6 +298,24 @@ export default function ProfilePage() {
                   {saving ? 'Saving…' : 'Save changes'}
                 </button>
               </form>
+
+              <div className={styles.divider} />
+
+              <div className={styles.security}>
+                <h3 className={styles.sectionTitle}>Security</h3>
+                <p className={styles.securityText}>
+                  We’ll email you a secure link to set a new password.
+                </p>
+                <button
+                  type="button"
+                  className={styles.secondary}
+                  onClick={onChangePassword}
+                  disabled={pwSending}
+                >
+                  {pwSending ? 'Sending…' : 'Change password via email'}
+                </button>
+                {pwMsg && <div className={styles.successMsg}>{pwMsg}</div>}
+              </div>
             </>
           ) : (
             <>
