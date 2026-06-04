@@ -1,24 +1,19 @@
+import { Link } from 'react-router-dom'
+import { formatPrice } from '../../lib/format'
 import styles from './ListingCard.module.css'
 
 type ListingCardProps = {
+  id: string
   title: string
   price: number | null
   city: string | null
   imageUrl: string | null
+  onClick?: () => void
 }
 
-function formatPrice(price: number | null): string {
-  if (price == null) return 'Price on request'
-  return new Intl.NumberFormat('de-DE', {
-    style: 'currency',
-    currency: 'EUR',
-    maximumFractionDigits: 2,
-  }).format(price)
-}
-
-export default function ListingCard({ title, price, city, imageUrl }: ListingCardProps) {
+export default function ListingCard({ id, title, price, city, imageUrl, onClick }: ListingCardProps) {
   return (
-    <article className={styles.card}>
+    <Link to={`/listings/${id}`} className={styles.card} onClick={onClick}>
       <div className={styles.imageWrap}>
         {imageUrl ? (
           <img src={imageUrl} alt={title} loading="lazy" />
@@ -34,6 +29,6 @@ export default function ListingCard({ title, price, city, imageUrl }: ListingCar
         <p className={styles.price}>{formatPrice(price)}</p>
         <p className={styles.location}>📍 {city || 'Location not specified'}</p>
       </div>
-    </article>
+    </Link>
   )
 }
