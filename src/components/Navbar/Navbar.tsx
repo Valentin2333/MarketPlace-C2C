@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { User } from '@supabase/supabase-js'
+import CreateListingModal from '../../features/listings/CreateListingModal'
 import styles from './Navbar.module.css'
 
 type Profile = {
@@ -15,6 +16,7 @@ export default function Navbar() {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -33,6 +35,7 @@ export default function Navbar() {
 
   useEffect(() => {
     setMenuOpen(false)
+    setCreateOpen(false)
   }, [location.pathname])
 
   const fetchProfile = async (userId: string) => {
@@ -49,6 +52,11 @@ export default function Navbar() {
     navigate('/')
   }
 
+  const handleCreate = () => {
+    if (user) setCreateOpen(true)
+    else navigate('/login')
+  }
+
   const isAdmin = profile?.role === 'admin'
 
   const isActive = (path: string) =>
@@ -63,6 +71,11 @@ export default function Navbar() {
             <div className={styles.logoIcon}>🛒</div>
             <span>MarketPlace</span>
           </Link>
+
+          <button type="button" className={styles.createBtn} onClick={handleCreate}>
+            <span className={styles.createPlus}>+</span>
+            Sell
+          </button>
 
           <div className={styles.links}>
             {isAdmin && (
@@ -113,7 +126,12 @@ export default function Navbar() {
       </header>
 
       {menuOpen && (
-        <div className={styles.mobileMenu}>
+        <div
+          className={styles.mobileMenu}
+          onClick={(e) => {
+            if ((e.target as HTMLElement).closest('a, button')) setMenuOpen(false)
+          }}
+        >
           {isAdmin && (
             <>
               <Link
@@ -151,6 +169,8 @@ export default function Navbar() {
           )}
         </div>
       )}
+
+      <CreateListingModal open={createOpen} onClose={() => setCreateOpen(false)} />
     </>
   )
 }

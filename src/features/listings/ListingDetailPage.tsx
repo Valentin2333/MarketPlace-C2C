@@ -92,7 +92,7 @@ export default function ListingDetailPage() {
   return (
     <div className={styles.page}>
       <div className={styles.container}>
-        <button type="button" onClick={goBack} className={styles.back}>← Back to listings</button>
+        <button type="button" onClick={goBack} className={styles.back}>← Back</button>
 
         <div className={styles.layout}>
           <div className={styles.gallery}>
