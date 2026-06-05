@@ -31,6 +31,11 @@ const DEFAULT_PANEL: PanelFilters = {
 const listCache = new Map<string, CacheEntry>()
 let facetsCache: { categories: { id: number; name: string }[]; cities: string[] } | null = null
 
+export function clearListingsCache() {
+  listCache.clear()
+  facetsCache = null
+}
+
 if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
   window.history.scrollRestoration = 'manual'
 }
