@@ -20,6 +20,7 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/profile/:id" element={<ProfilePage />} />
+        
         <Route path="/" element={<Navigate to="/listings" replace />} />
         <Route path="*" element={<Navigate to="/listings" replace />} />
       </Routes>
