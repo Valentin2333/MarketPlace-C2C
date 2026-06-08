@@ -266,3 +266,53 @@
     gap: var(--space-6);
   }
 }
+
+/* Owner actions */
+.ownerActions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.editBtn {
+  padding: var(--space-2) var(--space-5);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: #040d18;
+  background: linear-gradient(135deg, var(--color-primary), #0ea5e9);
+  border: none;
+  border-radius: var(--radius-md);
+  box-shadow: var(--glow-sm);
+  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.editBtn:hover {
+  box-shadow: var(--glow-md);
+  transform: translateY(-1px);
+}
+
+.editBtn:active {
+  transform: translateY(0);
+}
+
+.deleteBtn {
+  padding: var(--space-2) var(--space-5);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-error);
+  background: transparent;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: var(--radius-md);
+  transition: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.deleteBtn:hover:not(:disabled) {
+  background-color: rgba(248, 113, 113, 0.08);
+  border-color: rgba(248, 113, 113, 0.6);
+}
+
+.actionError {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-error);
+}
