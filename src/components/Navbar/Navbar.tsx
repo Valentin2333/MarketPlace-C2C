@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { User } from '@supabase/supabase-js'
@@ -17,6 +17,9 @@ export default function Navbar() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
+
+  const mobileMenuRef = useRef<HTMLDivElement>(null)
+  const hamburgerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -37,6 +40,19 @@ export default function Navbar() {
     setMenuOpen(false)
     setCreateOpen(false)
   }, [location.pathname])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as Node
+      if (mobileMenuRef.current?.contains(target) || hamburgerRef.current?.contains(target)) {
+        return
+      }
+      setMenuOpen(false)
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [menuOpen])
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
@@ -114,6 +130,7 @@ export default function Navbar() {
           </div>
 
           <button
+            ref={hamburgerRef}
             className={styles.hamburger}
             onClick={() => setMenuOpen((prev) => !prev)}
             aria-label="Toggle menu"
@@ -127,6 +144,7 @@ export default function Navbar() {
 
       {menuOpen && (
         <div
+          ref={mobileMenuRef}
           className={styles.mobileMenu}
           onClick={(e) => {
             if ((e.target as HTMLElement).closest('a, button')) setMenuOpen(false)

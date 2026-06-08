@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, DragEvent } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { clearListingsCache } from './useListings'
 import styles from './CreateListingModal.module.css'
@@ -17,13 +16,23 @@ type Category = {
   name: string
 }
 
-type PendingImage = {
-  id: string
+type ExistingImage = {
+  key: string
+  kind: 'existing'
+  id: number
+  url: string
+}
+
+type NewImage = {
+  key: string
+  kind: 'new'
   file: File
   preview: string
 }
 
-type CreateListingForm = {
+type EditImage = ExistingImage | NewImage
+
+type EditListingForm = {
   title: string
   description: string
   price: string
@@ -31,9 +40,11 @@ type CreateListingForm = {
   city: string
 }
 
-type CreateListingModalProps = {
+type EditListingModalProps = {
+  listingId: string
   open: boolean
   onClose: () => void
+  onSaved: () => void
 }
 
 async function compressImage(file: File): Promise<{ blob: Blob; ext: string; type: string }> {
@@ -71,17 +82,23 @@ async function compressImage(file: File): Promise<{ blob: Blob; ext: string; typ
   return { blob, ext: 'jpg', type: 'image/jpeg' }
 }
 
-export default function CreateListingModal({ open, onClose }: CreateListingModalProps) {
-  const navigate = useNavigate()
+function pathFromUrl(url: string): string | null {
+  const marker = `/${BUCKET}/`
+  const i = url.indexOf(marker)
+  return i === -1 ? null : url.slice(i + marker.length)
+}
 
+export default function EditListingModal({ listingId, open, onClose, onSaved }: EditListingModalProps) {
   const [categories, setCategories] = useState<Category[]>([])
-  const [images, setImages] = useState<PendingImage[]>([])
-  const [mainId, setMainId] = useState<string | null>(null)
+  const [images, setImages] = useState<EditImage[]>([])
+  const [mainKey, setMainKey] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [loaded, setLoaded] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const originalRef = useRef<{ id: number; url: string }[]>([])
 
   const {
     register,
@@ -90,7 +107,7 @@ export default function CreateListingModal({ open, onClose }: CreateListingModal
     setValue,
     watch,
     formState: { errors },
-  } = useForm<CreateListingForm>()
+  } = useForm<EditListingForm>()
 
   const selectedCategory = watch('categoryId')
 
@@ -106,21 +123,47 @@ export default function CreateListingModal({ open, onClose }: CreateListingModal
   useEffect(() => {
     if (!open) return
     let active = true
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
-      supabase
-        .from('profiles')
-        .select('city')
-        .eq('id', user.id)
+    setLoaded(false)
+
+    const load = async () => {
+      const { data: row } = await supabase
+        .from('listings')
+        .select('title, description, price, city, category_id')
+        .eq('id', listingId)
         .single()
-        .then(({ data }) => {
-          if (active && data?.city) setValue('city', data.city)
+
+      const { data: imgRows } = await supabase
+        .from('listing_images')
+        .select('id, url, position')
+        .eq('listing_id', listingId)
+        .order('position', { ascending: true })
+
+      if (!active) return
+
+      if (row) {
+        reset({
+          title: row.title ?? '',
+          description: row.description ?? '',
+          price: row.price != null ? String(row.price) : '',
+          categoryId: row.category_id != null ? String(row.category_id) : '',
+          city: row.city ?? '',
         })
-    })
+      }
+
+      const existing: ExistingImage[] = ((imgRows ?? []) as { id: number; url: string }[]).map(
+        (r) => ({ key: `e-${r.id}`, kind: 'existing', id: r.id, url: r.url }),
+      )
+      originalRef.current = existing.map((e) => ({ id: e.id, url: e.url }))
+      setImages(existing)
+      setMainKey(existing[0]?.key ?? null)
+      setLoaded(true)
+    }
+
+    load()
     return () => {
       active = false
     }
-  }, [open, setValue])
+  }, [open, listingId, reset])
 
   useEffect(() => {
     if (!open) return
@@ -135,9 +178,15 @@ export default function CreateListingModal({ open, onClose }: CreateListingModal
     }
   }, [open, onClose])
 
+  const revokeNew = (list: EditImage[]) => {
+    list.forEach((img) => {
+      if (img.kind === 'new') URL.revokeObjectURL(img.preview)
+    })
+  }
+
   const addFiles = (fileList: FileList) => {
     setServerError(null)
-    const valid: PendingImage[] = []
+    const valid: NewImage[] = []
     for (const file of Array.from(fileList)) {
       if (!file.type.startsWith('image/')) {
         setServerError('Only image files are allowed.')
@@ -147,12 +196,12 @@ export default function CreateListingModal({ open, onClose }: CreateListingModal
         setServerError('Each image must be smaller than 15 MB.')
         continue
       }
-      valid.push({ id: crypto.randomUUID(), file, preview: URL.createObjectURL(file) })
+      valid.push({ key: crypto.randomUUID(), kind: 'new', file, preview: URL.createObjectURL(file) })
     }
 
     setImages((prev) => {
       const next = [...prev, ...valid].slice(0, MAX_IMAGES)
-      setMainId((current) => current ?? next[0]?.id ?? null)
+      setMainKey((current) => current ?? next[0]?.key ?? null)
       return next
     })
   }
@@ -173,30 +222,25 @@ export default function CreateListingModal({ open, onClose }: CreateListingModal
     setDragOver(true)
   }
 
-  const removeImage = (id: string) => {
+  const removeImage = (key: string) => {
     setImages((prev) => {
-      const target = prev.find((img) => img.id === id)
-      if (target) URL.revokeObjectURL(target.preview)
-      const next = prev.filter((img) => img.id !== id)
-      setMainId((current) => (current === id ? next[0]?.id ?? null : current))
+      const target = prev.find((img) => img.key === key)
+      if (target && target.kind === 'new') URL.revokeObjectURL(target.preview)
+      const next = prev.filter((img) => img.key !== key)
+      setMainKey((current) => (current === key ? next[0]?.key ?? null : current))
       return next
     })
   }
 
-  const clearImages = () => {
-    images.forEach((img) => URL.revokeObjectURL(img.preview))
-    setImages([])
-    setMainId(null)
-  }
-
   const close = () => {
-    clearImages()
-    reset()
+    revokeNew(images)
+    setImages([])
+    setMainKey(null)
     setServerError(null)
     onClose()
   }
 
-  const onSubmit = async (values: CreateListingForm) => {
+  const onSubmit = async (values: EditListingForm) => {
     setSubmitting(true)
     setServerError(null)
 
@@ -206,73 +250,86 @@ export default function CreateListingModal({ open, onClose }: CreateListingModal
 
     if (!user) {
       setSubmitting(false)
-      setServerError('You must be signed in to create a listing.')
+      setServerError('You must be signed in to edit a listing.')
       return
     }
 
-    const { data: created, error } = await supabase
+    const { error: updateError } = await supabase
       .from('listings')
-      .insert({
+      .update({
         title: values.title.trim(),
         description: values.description.trim(),
         price: Number(values.price),
         city: values.city.trim(),
         category_id: Number(values.categoryId),
-        user_id: user.id,
-        status: 'active',
       })
-      .select('id')
-      .single()
+      .eq('id', listingId)
 
-    if (error || !created) {
+    if (updateError) {
       setSubmitting(false)
-      setServerError(error?.message ?? 'Could not create listing.')
+      setServerError(updateError.message)
       return
     }
 
-    if (images.length > 0) {
-      const ordered = [...images].sort((a, b) => {
-        if (a.id === mainId) return -1
-        if (b.id === mainId) return 1
-        return 0
-      })
+    const ordered = [...images].sort((a, b) => {
+      if (a.key === mainKey) return -1
+      if (b.key === mainKey) return 1
+      return 0
+    })
 
-      const rows: { listing_id: string; url: string; position: number }[] = []
+    const rows: { listing_id: string; url: string; position: number }[] = []
 
-      for (let i = 0; i < ordered.length; i++) {
-        const { blob, ext, type } = await compressImage(ordered[i].file)
-        const path = `${user.id}/${created.id}/${i}-${Date.now()}.${ext}`
-
-        const { error: uploadError } = await supabase.storage
-          .from(BUCKET)
-          .upload(path, blob, { contentType: type, upsert: false })
-
-        if (uploadError) {
-          setSubmitting(false)
-          setServerError(uploadError.message)
-          return
-        }
-
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from(BUCKET).getPublicUrl(path)
-        rows.push({ listing_id: created.id, url: publicUrl, position: i })
+    for (let i = 0; i < ordered.length; i++) {
+      const img = ordered[i]
+      if (img.kind === 'existing') {
+        rows.push({ listing_id: listingId, url: img.url, position: i })
+        continue
       }
-
-      const { error: imageError } = await supabase.from('listing_images').insert(rows)
-      if (imageError) {
+      const { blob, ext, type } = await compressImage(img.file)
+      const path = `${user.id}/${listingId}/${i}-${Date.now()}.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET)
+        .upload(path, blob, { contentType: type, upsert: false })
+      if (uploadError) {
         setSubmitting(false)
-        setServerError(imageError.message)
+        setServerError(uploadError.message)
+        return
+      }
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from(BUCKET).getPublicUrl(path)
+      rows.push({ listing_id: listingId, url: publicUrl, position: i })
+    }
+
+    const keptIds = new Set(
+      images.filter((img): img is ExistingImage => img.kind === 'existing').map((img) => img.id),
+    )
+    const removedPaths = originalRef.current
+      .filter((o) => !keptIds.has(o.id))
+      .map((o) => pathFromUrl(o.url))
+      .filter((p): p is string => !!p)
+
+    if (removedPaths.length > 0) {
+      await supabase.storage.from(BUCKET).remove(removedPaths)
+    }
+
+    await supabase.from('listing_images').delete().eq('listing_id', listingId)
+
+    if (rows.length > 0) {
+      const { error: insertError } = await supabase.from('listing_images').insert(rows)
+      if (insertError) {
+        setSubmitting(false)
+        setServerError(insertError.message)
         return
       }
     }
 
     clearListingsCache()
-    clearImages()
-    reset()
+    revokeNew(images)
+    setImages([])
+    setMainKey(null)
     setSubmitting(false)
-    onClose()
-    navigate(`/listings/${created.id}`)
+    onSaved()
   }
 
   return (
@@ -286,11 +343,11 @@ export default function CreateListingModal({ open, onClose }: CreateListingModal
         className={`${styles.modal} ${open ? styles.modalOpen : ''}`}
         role="dialog"
         aria-modal="true"
-        aria-label="Create a listing"
+        aria-label="Edit listing"
         aria-hidden={!open}
       >
         <div className={styles.header}>
-          <h2 className={styles.title}>Create a listing</h2>
+          <h2 className={styles.title}>Edit listing</h2>
           <button type="button" className={styles.close} onClick={close} aria-label="Close">
             ×
           </button>
@@ -300,11 +357,10 @@ export default function CreateListingModal({ open, onClose }: CreateListingModal
           {serverError && <div className={styles.serverError}>{serverError}</div>}
 
           <div className={styles.field}>
-            <label htmlFor="cl-title">Title</label>
+            <label htmlFor="el-title">Title</label>
             <input
-              id="cl-title"
+              id="el-title"
               type="text"
-              placeholder="e.g. iPhone 13, 128GB"
               aria-invalid={!!errors.title}
               {...register('title', {
                 required: 'Title is required',
@@ -336,14 +392,13 @@ export default function CreateListingModal({ open, onClose }: CreateListingModal
 
           <div className={styles.row}>
             <div className={styles.field}>
-              <label htmlFor="cl-price">Price (€)</label>
+              <label htmlFor="el-price">Price (€)</label>
               <input
-                id="cl-price"
+                id="el-price"
                 type="number"
                 min="0"
                 step="0.01"
                 inputMode="decimal"
-                placeholder="e.g. 250"
                 onWheel={(e) => e.currentTarget.blur()}
                 aria-invalid={!!errors.price}
                 {...register('price', {
@@ -355,11 +410,10 @@ export default function CreateListingModal({ open, onClose }: CreateListingModal
             </div>
 
             <div className={styles.field}>
-              <label htmlFor="cl-city">City</label>
+              <label htmlFor="el-city">City</label>
               <input
-                id="cl-city"
+                id="el-city"
                 type="text"
-                placeholder="e.g. Sofia"
                 aria-invalid={!!errors.city}
                 {...register('city', { required: 'City is required' })}
               />
@@ -368,11 +422,10 @@ export default function CreateListingModal({ open, onClose }: CreateListingModal
           </div>
 
           <div className={styles.field}>
-            <label htmlFor="cl-description">Description</label>
+            <label htmlFor="el-description">Description</label>
             <textarea
-              id="cl-description"
+              id="el-description"
               rows={5}
-              placeholder="Describe the item, its condition, what's included…"
               aria-invalid={!!errors.description}
               {...register('description', {
                 required: 'Description is required',
@@ -417,19 +470,19 @@ export default function CreateListingModal({ open, onClose }: CreateListingModal
                   <div className={styles.thumbs}>
                     {images.map((img) => (
                       <div
-                        key={img.id}
-                        className={`${styles.thumb} ${img.id === mainId ? styles.thumbMain : ''}`}
-                        onClick={() => setMainId(img.id)}
-                        title={img.id === mainId ? 'Main photo' : 'Set as main photo'}
+                        key={img.key}
+                        className={`${styles.thumb} ${img.key === mainKey ? styles.thumbMain : ''}`}
+                        onClick={() => setMainKey(img.key)}
+                        title={img.key === mainKey ? 'Main photo' : 'Set as main photo'}
                       >
-                        <img src={img.preview} alt="" />
-                        {img.id === mainId && <span className={styles.mainBadge}>Main</span>}
+                        <img src={img.kind === 'existing' ? img.url : img.preview} alt="" />
+                        {img.key === mainKey && <span className={styles.mainBadge}>Main</span>}
                         <button
                           type="button"
                           className={styles.remove}
                           onClick={(e) => {
                             e.stopPropagation()
-                            removeImage(img.id)
+                            removeImage(img.key)
                           }}
                           aria-label="Remove photo"
                         >
@@ -448,8 +501,8 @@ export default function CreateListingModal({ open, onClose }: CreateListingModal
             <button type="button" className={styles.cancel} onClick={close}>
               Cancel
             </button>
-            <button type="submit" className={styles.submit} disabled={submitting}>
-              {submitting ? 'Publishing…' : 'Publish listing'}
+            <button type="submit" className={styles.submit} disabled={submitting || !loaded}>
+              {submitting ? 'Saving…' : 'Save changes'}
             </button>
           </div>
         </form>

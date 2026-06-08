@@ -1,8 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { formatPrice, formatDate } from '../../lib/format'
+import { clearListingsCache } from './useListings'
+import EditListingModal from './EditListingModal'
+import ConfirmModal from './ConfirmModal'
 import styles from './ListingDetailPage.module.css'
+
+const BUCKET = 'listing-images'
 
 type ListingDetail = {
   id: string
@@ -14,6 +19,12 @@ type ListingDetail = {
   categories: { name: string } | null
   listing_images: { url: string }[] | null
   profiles: { id: string; name: string | null; avatar_url: string | null } | null
+}
+
+function pathFromUrl(url: string): string | null {
+  const marker = `/${BUCKET}/`
+  const i = url.indexOf(marker)
+  return i === -1 ? null : url.slice(i + marker.length)
 }
 
 export default function ListingDetailPage() {
@@ -30,41 +41,75 @@ export default function ListingDetailPage() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [activeImage, setActiveImage] = useState(0)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  const reqIdRef = useRef(0)
+
+  const load = useCallback(async () => {
+    if (!id) return
+    const reqId = ++reqIdRef.current
+    setLoading(true)
+    setNotFound(false)
+    setActiveImage(0)
+
+    const { data, error } = await supabase
+      .from('listings')
+      .select(
+        'id, title, description, price, city, created_at, categories ( name ), listing_images ( url ), profiles ( id, name, avatar_url )',
+      )
+      .eq('id', id)
+      .maybeSingle()
+
+    if (reqId !== reqIdRef.current) return
+
+    if (error || !data) {
+      setNotFound(true)
+      setListing(null)
+    } else {
+      setListing(data as unknown as ListingDetail)
+    }
+    setLoading(false)
+  }, [id])
 
   useEffect(() => {
-    if (!id) return
-    let active = true
-
-    const load = async () => {
-      setLoading(true)
-      setNotFound(false)
-      setActiveImage(0)
-
-      const { data, error } = await supabase
-        .from('listings')
-        .select(
-          'id, title, description, price, city, created_at, categories ( name ), listing_images ( url, position ), profiles ( id, name, avatar_url )',
-        )
-        .eq('id', id)
-        .order('position', { referencedTable: 'listing_images', ascending: true })
-        .maybeSingle()
-
-      if (!active) return
-
-      if (error || !data) {
-        setNotFound(true)
-        setListing(null)
-      } else {
-        setListing(data as unknown as ListingDetail)
-      }
-      setLoading(false)
-    }
-
     load()
-    return () => {
-      active = false
+  }, [load])
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => setCurrentUserId(user?.id ?? null))
+  }, [])
+
+  const confirmDelete = async () => {
+    if (!listing) return
+
+    setDeleting(true)
+    setActionError(null)
+
+    const paths = (listing.listing_images ?? [])
+      .map((img) => pathFromUrl(img.url))
+      .filter((p): p is string => !!p)
+
+    if (paths.length > 0) {
+      await supabase.storage.from(BUCKET).remove(paths)
     }
-  }, [id])
+    await supabase.from('listing_images').delete().eq('listing_id', listing.id)
+    const { error } = await supabase.from('listings').delete().eq('id', listing.id)
+
+    setDeleting(false)
+
+    if (error) {
+      setConfirmOpen(false)
+      setActionError(error.message)
+      return
+    }
+
+    clearListingsCache()
+    navigate('/listings')
+  }
 
   if (loading) {
     return (
@@ -89,11 +134,12 @@ export default function ListingDetailPage() {
   const images = listing.listing_images ?? []
   const hasImages = images.length > 0
   const seller = listing.profiles
+  const isOwner = !!currentUserId && seller?.id === currentUserId
 
   return (
     <div className={styles.page}>
       <div className={styles.container}>
-        <button type="button" onClick={goBack} className={styles.back}>← Back</button>
+        <button type="button" onClick={goBack} className={styles.back}>← Back to listings</button>
 
         <div className={styles.layout}>
           <div className={styles.gallery}>
@@ -157,6 +203,23 @@ export default function ListingDetailPage() {
               {listing.created_at && ` · ${formatDate(listing.created_at)}`}
             </p>
 
+            {isOwner && (
+              <div className={styles.ownerActions}>
+                <button type="button" className={styles.editBtn} onClick={() => setEditOpen(true)}>
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className={styles.deleteBtn}
+                  onClick={() => setConfirmOpen(true)}
+                  disabled={deleting}
+                >
+                  {deleting ? 'Deleting…' : 'Delete'}
+                </button>
+              </div>
+            )}
+            {actionError && <p className={styles.actionError}>{actionError}</p>}
+
             {listing.description && (
               <>
                 <div className={styles.divider} />
@@ -184,6 +247,31 @@ export default function ListingDetailPage() {
           </div>
         </div>
       </div>
+
+      {isOwner && (
+        <EditListingModal
+          listingId={listing.id}
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          onSaved={() => {
+            setEditOpen(false)
+            load()
+          }}
+        />
+      )}
+
+      {isOwner && (
+        <ConfirmModal
+          open={confirmOpen}
+          title="Delete listing"
+          message="Delete this listing? This cannot be undone."
+          confirmLabel="Delete"
+          loadingLabel="Deleting…"
+          loading={deleting}
+          onConfirm={confirmDelete}
+          onClose={() => setConfirmOpen(false)}
+        />
+      )}
     </div>
   )
 }
