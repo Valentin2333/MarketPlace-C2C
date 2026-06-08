@@ -43,9 +43,10 @@ export default function ListingDetailPage() {
       const { data, error } = await supabase
         .from('listings')
         .select(
-          'id, title, description, price, city, created_at, categories ( name ), listing_images ( url ), profiles ( id, name, avatar_url )',
+          'id, title, description, price, city, created_at, categories ( name ), listing_images ( url, position ), profiles ( id, name, avatar_url )',
         )
         .eq('id', id)
+        .order('position', { referencedTable: 'listing_images', ascending: true })
         .maybeSingle()
 
       if (!active) return
