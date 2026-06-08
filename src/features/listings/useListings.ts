@@ -77,9 +77,9 @@ async function fetchPage(search: string, f: PanelFilters, from: number) {
   const base =
     from === 0
       ? supabase
-        .from('listings')
-        .select('id, title, price, city, listing_images ( url, position )', { count: 'exact' })
-      : supabase.from('listings').select('id, title, price, city, listing_images ( url, position )')
+          .from('listings')
+          .select('id, title, price, city, listing_images ( url )', { count: 'exact' })
+      : supabase.from('listings').select('id, title, price, city, listing_images ( url )')
 
   let query = base.eq('status', 'active')
 
@@ -100,9 +100,7 @@ async function fetchPage(search: string, f: PanelFilters, from: number) {
           ? query.order('price', { ascending: false, nullsFirst: false })
           : query.order('created_at', { ascending: false })
 
-  const { data, count, error } = await ordered
-    .order('position', { referencedTable: 'listing_images', ascending: true })
-    .range(from, from + PAGE_SIZE - 1)
+  const { data, count, error } = await ordered.range(from, from + PAGE_SIZE - 1)
   if (error) throw new Error(error.message)
   return { rows: (data ?? []) as ListingRow[], count: count ?? null }
 }
