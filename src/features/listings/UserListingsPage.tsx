@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Link, useParams, useNavigationType } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import ListingCard from '../../components/ListingCard/ListingCard'
 import styles from './UserListingsPage.module.css'
@@ -12,14 +12,19 @@ type UserListing = {
   listing_images: { url: string }[] | null
 }
 
+const scrollPositions = new Map<string, number>()
+
 export default function UserListingsPage() {
   const { id } = useParams<{ id: string }>()
+  const navType = useNavigationType()
 
   const [listings, setListings] = useState<UserListing[]>([])
   const [ownerName, setOwnerName] = useState<string | null>(null)
   const [isOwner, setIsOwner] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const didRestore = useRef(false)
 
   useEffect(() => {
     if (!id) return
@@ -66,6 +71,22 @@ export default function UserListingsPage() {
     }
   }, [id])
 
+  useLayoutEffect(() => {
+    if (didRestore.current) return
+    if (navType !== 'POP') {
+      didRestore.current = true
+      return
+    }
+    if (loading) return
+    const y = id ? scrollPositions.get(id) ?? 0 : 0
+    window.scrollTo({ top: y, left: 0, behavior: 'instant' as ScrollBehavior })
+    didRestore.current = true
+  }, [loading, navType, id])
+
+  const saveScroll = () => {
+    if (id) scrollPositions.set(id, window.scrollY)
+  }
+
   const heading = isOwner ? 'My listings' : ownerName ? `${ownerName}'s listings` : 'Listings'
 
   return (
@@ -90,6 +111,7 @@ export default function UserListingsPage() {
                 price={listing.price}
                 city={listing.city}
                 imageUrl={listing.listing_images?.[0]?.url ?? null}
+                onClick={saveScroll}
               />
             ))}
           </div>
