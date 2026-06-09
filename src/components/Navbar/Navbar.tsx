@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { User } from '@supabase/supabase-js'
+import CreateListingModal from '../../features/listings/CreateListingModal'
 import styles from './Navbar.module.css'
 
 type Profile = {
@@ -15,6 +16,10 @@ export default function Navbar() {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
+
+  const mobileMenuRef = useRef<HTMLDivElement>(null)
+  const hamburgerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -33,7 +38,21 @@ export default function Navbar() {
 
   useEffect(() => {
     setMenuOpen(false)
+    setCreateOpen(false)
   }, [location.pathname])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as Node
+      if (mobileMenuRef.current?.contains(target) || hamburgerRef.current?.contains(target)) {
+        return
+      }
+      setMenuOpen(false)
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [menuOpen])
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
@@ -44,9 +63,9 @@ export default function Navbar() {
     setProfile(data)
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    navigate('/')
+  const handleCreate = () => {
+    if (user) setCreateOpen(true)
+    else navigate('/login')
   }
 
   const isAdmin = profile?.role === 'admin'
@@ -64,6 +83,11 @@ export default function Navbar() {
             <span>MarketPlace</span>
           </Link>
 
+          <button type="button" className={styles.createBtn} onClick={handleCreate}>
+            <span className={styles.createPlus}>+</span>
+            Sell
+          </button>
+
           <div className={styles.links}>
             {isAdmin && (
               <Link
@@ -77,17 +101,12 @@ export default function Navbar() {
 
           <div className={styles.actions}>
             {user ? (
-              <>
-                <Link
-                  to={`/profile/${user.id}`}
-                  className={`${styles.navLink} ${isActive('/profile') ? styles.navLinkActive : ''}`}
-                >
-                  Profile
-                </Link>
-                <button className={styles.btnLogout} onClick={handleLogout}>
-                  Log out
-                </button>
-              </>
+              <Link
+                to={`/profile/${user.id}`}
+                className={`${styles.navLink} ${isActive('/profile') ? styles.navLinkActive : ''}`}
+              >
+                Profile
+              </Link>
             ) : (
               <>
                 <Link to="/login" className={styles.btnGhost}>
@@ -101,6 +120,7 @@ export default function Navbar() {
           </div>
 
           <button
+            ref={hamburgerRef}
             className={styles.hamburger}
             onClick={() => setMenuOpen((prev) => !prev)}
             aria-label="Toggle menu"
@@ -113,7 +133,13 @@ export default function Navbar() {
       </header>
 
       {menuOpen && (
-        <div className={styles.mobileMenu}>
+        <div
+          ref={mobileMenuRef}
+          className={styles.mobileMenu}
+          onClick={(e) => {
+            if ((e.target as HTMLElement).closest('a, button')) setMenuOpen(false)
+          }}
+        >
           {isAdmin && (
             <>
               <Link
@@ -128,17 +154,12 @@ export default function Navbar() {
           )}
 
           {user ? (
-            <>
-              <Link
-                to={`/profile/${user.id}`}
-                className={`${styles.mobileLink} ${isActive('/profile') ? styles.mobileLinkActive : ''}`}
-              >
-                Profile
-              </Link>
-              <button className={styles.mobileBtnLogout} onClick={handleLogout}>
-                Log out
-              </button>
-            </>
+            <Link
+              to={`/profile/${user.id}`}
+              className={`${styles.mobileLink} ${isActive('/profile') ? styles.mobileLinkActive : ''}`}
+            >
+              Profile
+            </Link>
           ) : (
             <>
               <Link to="/login" className={styles.mobileLink}>
@@ -151,6 +172,8 @@ export default function Navbar() {
           )}
         </div>
       )}
+
+      <CreateListingModal open={createOpen} onClose={() => setCreateOpen(false)} />
     </>
   )
 }

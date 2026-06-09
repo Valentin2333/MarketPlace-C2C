@@ -1,0 +1,47 @@
+/* ListingsToolbar.module.css */
+
+.toolbar {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.search {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-base);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.search::placeholder {
+  color: var(--color-text-muted);
+}
+
+.search:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--glow-sm);
+}
+
+.filterBtn {
+  flex-shrink: 0;
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.filterBtn:hover {
+  color: var(--color-primary);
+  border-color: var(--color-border-hover);
+}
