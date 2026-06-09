@@ -63,11 +63,6 @@ export default function Navbar() {
     setProfile(data)
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    navigate('/')
-  }
-
   const handleCreate = () => {
     if (user) setCreateOpen(true)
     else navigate('/login')
@@ -106,17 +101,12 @@ export default function Navbar() {
 
           <div className={styles.actions}>
             {user ? (
-              <>
-                <Link
-                  to={`/profile/${user.id}`}
-                  className={`${styles.navLink} ${isActive('/profile') ? styles.navLinkActive : ''}`}
-                >
-                  Profile
-                </Link>
-                <button className={styles.btnLogout} onClick={handleLogout}>
-                  Log out
-                </button>
-              </>
+              <Link
+                to={`/profile/${user.id}`}
+                className={`${styles.navLink} ${isActive('/profile') ? styles.navLinkActive : ''}`}
+              >
+                Profile
+              </Link>
             ) : (
               <>
                 <Link to="/login" className={styles.btnGhost}>
@@ -164,17 +154,12 @@ export default function Navbar() {
           )}
 
           {user ? (
-            <>
-              <Link
-                to={`/profile/${user.id}`}
-                className={`${styles.mobileLink} ${isActive('/profile') ? styles.mobileLinkActive : ''}`}
-              >
-                Profile
-              </Link>
-              <button className={styles.mobileBtnLogout} onClick={handleLogout}>
-                Log out
-              </button>
-            </>
+            <Link
+              to={`/profile/${user.id}`}
+              className={`${styles.mobileLink} ${isActive('/profile') ? styles.mobileLinkActive : ''}`}
+            >
+              Profile
+            </Link>
           ) : (
             <>
               <Link to="/login" className={styles.mobileLink}>

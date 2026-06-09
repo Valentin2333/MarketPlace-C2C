@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { useForm } from 'react-hook-form'
-import { useParams } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import styles from './ProfilePage.module.css'
 
@@ -20,6 +20,7 @@ type ProfileFormData = {
 
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
@@ -185,6 +186,11 @@ export default function ProfilePage() {
     setPwMsg(`We've sent a password reset link to ${currentUserEmail}.`)
   }
 
+  const onLogout = async () => {
+    await supabase.auth.signOut()
+    navigate('/')
+  }
+
   const initials = (profile?.name ?? '?')
     .split(' ')
     .map((w) => w[0])
@@ -264,6 +270,12 @@ export default function ProfilePage() {
 
           {isOwner ? (
             <>
+              <div className={styles.profileActions}>
+                <Link to={`/profile/${id}/listings`} className={styles.linkBtn}>
+                  My listings
+                </Link>
+              </div>
+
               <div className={styles.divider} />
 
               <form className={styles.form} onSubmit={handleSubmit(onSave)} noValidate>
@@ -315,6 +327,9 @@ export default function ProfilePage() {
                   {pwSending ? 'Sending…' : 'Change password via email'}
                 </button>
                 {pwMsg && <div className={styles.successMsg}>{pwMsg}</div>}
+                <button type="button" className={styles.logout} onClick={onLogout}>
+                  Log out
+                </button>
               </div>
             </>
           ) : (
