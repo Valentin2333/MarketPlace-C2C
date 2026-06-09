@@ -6,6 +6,7 @@ import ResetPassword from './features/auth/ResetPassword'
 import ProfilePage from './features/profile/ProfilePage'
 import ListingsPage from './features/listings/ListingsPage'
 import ListingDetailPage from './features/listings/ListingDetailPage'
+import UserListingsPage from './features/listings/UserListingsPage'
 import Navbar from './components/Navbar/Navbar'
 
 export default function App() {
@@ -20,7 +21,8 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/profile/:id" element={<ProfilePage />} />
-        
+        <Route path="/profile/:id/listings" element={<UserListingsPage />} />
+
         <Route path="/" element={<Navigate to="/listings" replace />} />
         <Route path="*" element={<Navigate to="/listings" replace />} />
       </Routes>
