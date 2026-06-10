@@ -3,6 +3,7 @@ import type { ChangeEvent, DragEvent } from 'react'
 import { useForm } from 'react-hook-form'
 import { supabase } from '../../lib/supabase'
 import { clearListingsCache } from './useListings'
+import { useToast } from '../../components/Toast/useToast'
 import styles from './CreateListingModal.module.css'
 
 const BUCKET = 'listing-images'
@@ -89,6 +90,8 @@ function pathFromUrl(url: string): string | null {
 }
 
 export default function EditListingModal({ listingId, open, onClose, onSaved }: EditListingModalProps) {
+  const toast = useToast()
+
   const [categories, setCategories] = useState<Category[]>([])
   const [images, setImages] = useState<EditImage[]>([])
   const [mainKey, setMainKey] = useState<string | null>(null)
@@ -250,7 +253,7 @@ export default function EditListingModal({ listingId, open, onClose, onSaved }: 
 
     if (!user) {
       setSubmitting(false)
-      setServerError('You must be signed in to edit a listing.')
+      toast.error('You must be signed in to edit a listing.')
       return
     }
 
@@ -267,7 +270,7 @@ export default function EditListingModal({ listingId, open, onClose, onSaved }: 
 
     if (updateError) {
       setSubmitting(false)
-      setServerError(updateError.message)
+      toast.error(updateError.message)
       return
     }
 
@@ -292,7 +295,7 @@ export default function EditListingModal({ listingId, open, onClose, onSaved }: 
         .upload(path, blob, { contentType: type, upsert: false })
       if (uploadError) {
         setSubmitting(false)
-        setServerError(uploadError.message)
+        toast.error(uploadError.message)
         return
       }
       const {
@@ -319,7 +322,7 @@ export default function EditListingModal({ listingId, open, onClose, onSaved }: 
       const { error: insertError } = await supabase.from('listing_images').insert(rows)
       if (insertError) {
         setSubmitting(false)
-        setServerError(insertError.message)
+        toast.error(insertError.message)
         return
       }
     }
@@ -329,6 +332,7 @@ export default function EditListingModal({ listingId, open, onClose, onSaved }: 
     setImages([])
     setMainKey(null)
     setSubmitting(false)
+    toast.success('Listing updated.')
     onSaved()
   }
 
