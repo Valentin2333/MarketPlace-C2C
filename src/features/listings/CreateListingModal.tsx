@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { clearListingsCache } from './useListings'
+import { useToast } from '../../components/Toast/useToast'
 import styles from './CreateListingModal.module.css'
 
 const BUCKET = 'listing-images'
@@ -73,6 +74,7 @@ async function compressImage(file: File): Promise<{ blob: Blob; ext: string; typ
 
 export default function CreateListingModal({ open, onClose }: CreateListingModalProps) {
   const navigate = useNavigate()
+  const toast = useToast()
 
   const [categories, setCategories] = useState<Category[]>([])
   const [images, setImages] = useState<PendingImage[]>([])
@@ -206,7 +208,7 @@ export default function CreateListingModal({ open, onClose }: CreateListingModal
 
     if (!user) {
       setSubmitting(false)
-      setServerError('You must be signed in to create a listing.')
+      toast.error('You must be signed in to create a listing.')
       return
     }
 
@@ -226,7 +228,7 @@ export default function CreateListingModal({ open, onClose }: CreateListingModal
 
     if (error || !created) {
       setSubmitting(false)
-      setServerError(error?.message ?? 'Could not create listing.')
+      toast.error(error?.message ?? 'Could not create listing.')
       return
     }
 
@@ -249,7 +251,7 @@ export default function CreateListingModal({ open, onClose }: CreateListingModal
 
         if (uploadError) {
           setSubmitting(false)
-          setServerError(uploadError.message)
+          toast.error(uploadError.message)
           return
         }
 
@@ -262,7 +264,7 @@ export default function CreateListingModal({ open, onClose }: CreateListingModal
       const { error: imageError } = await supabase.from('listing_images').insert(rows)
       if (imageError) {
         setSubmitting(false)
-        setServerError(imageError.message)
+        toast.error(imageError.message)
         return
       }
     }
@@ -271,6 +273,7 @@ export default function CreateListingModal({ open, onClose }: CreateListingModal
     clearImages()
     reset()
     setSubmitting(false)
+    toast.success('Listing created.')
     onClose()
     navigate(`/listings/${created.id}`)
   }

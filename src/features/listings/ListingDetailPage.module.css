@@ -310,9 +310,3 @@
   background-color: rgba(248, 113, 113, 0.08);
   border-color: rgba(248, 113, 113, 0.6);
 }
-
-.actionError {
-  margin-top: var(--space-3);
-  font-size: var(--text-sm);
-  color: var(--color-error);
-}

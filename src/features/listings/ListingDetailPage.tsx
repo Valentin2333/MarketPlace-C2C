@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { formatPrice, formatDate } from '../../lib/format'
 import { clearListingsCache } from './useListings'
+import { useToast } from '../../components/Toast/useToast'
 import EditListingModal from './EditListingModal'
 import ConfirmModal from './ConfirmModal'
 import styles from './ListingDetailPage.module.css'
@@ -31,6 +32,7 @@ export default function ListingDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const location = useLocation()
+  const toast = useToast()
 
   const goBack = () => {
     if (location.key !== 'default') navigate(-1)
@@ -45,7 +47,6 @@ export default function ListingDetailPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [actionError, setActionError] = useState<string | null>(null)
 
   const reqIdRef = useRef(0)
 
@@ -87,7 +88,6 @@ export default function ListingDetailPage() {
     if (!listing) return
 
     setDeleting(true)
-    setActionError(null)
 
     const paths = (listing.listing_images ?? [])
       .map((img) => pathFromUrl(img.url))
@@ -103,11 +103,12 @@ export default function ListingDetailPage() {
 
     if (error) {
       setConfirmOpen(false)
-      setActionError(error.message)
+      toast.error(error.message)
       return
     }
 
     clearListingsCache()
+    toast.success('Listing deleted.')
     navigate('/listings')
   }
 
@@ -218,7 +219,6 @@ export default function ListingDetailPage() {
                 </button>
               </div>
             )}
-            {actionError && <p className={styles.actionError}>{actionError}</p>}
 
             {listing.description && (
               <>

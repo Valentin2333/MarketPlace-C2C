@@ -1,0 +1,122 @@
+/* ─────────────────────────────────────────
+   TOAST — transient success / error feedback
+   Stacks bottom-right above modals (z 2000 > 1001).
+───────────────────────────────────────── */
+
+.container {
+  position: fixed;
+  bottom: var(--space-6);
+  right: var(--space-6);
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 380px;
+  /* let clicks pass through gaps; individual toasts re-enable below */
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-solid);
+  box-shadow: var(--shadow-lg);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  animation: toastIn var(--transition-base) ease;
+}
+
+.toast.leaving {
+  animation: toastOut 200ms ease forwards;
+}
+
+/* accent edge per type */
+.success {
+  border-left: 3px solid var(--color-success);
+}
+
+.error {
+  border-left: 3px solid var(--color-error);
+}
+
+.icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-bg);
+}
+
+.success .icon {
+  background: var(--color-success);
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.35);
+}
+
+.error .icon {
+  background: var(--color-error);
+  box-shadow: 0 0 12px rgba(248, 113, 113, 0.35);
+}
+
+.message {
+  flex: 1;
+  padding-top: 1px;
+  line-height: 1.5;
+}
+
+.close {
+  flex-shrink: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.close:hover {
+  color: var(--color-text);
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toastOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    left: var(--space-4);
+    right: var(--space-4);
+    bottom: var(--space-4);
+    width: auto;
+    max-width: none;
+  }
+}
