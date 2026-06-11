@@ -1,15 +1,16 @@
-import { Link } from 'react-router-dom'
-import styles from './Footer.module.css'
+import { Link } from "react-router-dom";
+import BrandMark from '../BrandMark/BrandMark'
+import styles from "./Footer.module.css";
 
 export default function Footer() {
-  const year = new Date().getFullYear()
+  const year = new Date().getFullYear();
 
   return (
     <footer className={styles.footer}>
       <div className={styles.inner}>
         <div className={styles.brand}>
           <Link to="/" className={styles.logo}>
-            <span className={styles.logoIcon}>🛒</span>
+            <BrandMark className={styles.logoIcon} />
             <span className={styles.logoText}>MarketPlace</span>
           </Link>
           <p className={styles.description}>
@@ -21,9 +22,15 @@ export default function Footer() {
 
         <nav className={styles.links} aria-label="Footer">
           <span className={styles.linksTitle}>Help &amp; Legal</span>
-          <Link to="/faq" className={styles.link}>FAQ</Link>
-          <Link to="/terms" className={styles.link}>Terms &amp; Conditions</Link>
-          <Link to="/privacy" className={styles.link}>Privacy Policy</Link>
+          <Link to="/faq" className={styles.link}>
+            FAQ
+          </Link>
+          <Link to="/terms" className={styles.link}>
+            Terms &amp; Conditions
+          </Link>
+          <Link to="/privacy" className={styles.link}>
+            Privacy Policy
+          </Link>
         </nav>
       </div>
 
@@ -33,5 +40,5 @@ export default function Footer() {
         </p>
       </div>
     </footer>
-  )
+  );
 }

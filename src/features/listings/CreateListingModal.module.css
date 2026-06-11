@@ -6,7 +6,9 @@
   background: rgba(0, 0, 0, 0.55);
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.25s ease, visibility 0.25s ease;
+  transition:
+    opacity 0.25s ease,
+    visibility 0.25s ease;
   z-index: 1000;
 }
 
@@ -30,7 +32,10 @@
   transform: translate(-50%, -46%);
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease,
+    visibility 0.25s ease;
   z-index: 1001;
 }
 
@@ -66,7 +71,9 @@
   background: transparent;
   border: none;
   border-radius: var(--radius-md);
-  transition: color var(--transition-fast), background-color var(--transition-fast);
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast);
 }
 
 .close:hover {
@@ -135,7 +142,9 @@
   background: transparent;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  transition: color var(--transition-fast), border-color var(--transition-fast);
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .cancel:hover {
@@ -155,7 +164,11 @@
 }
 
 .submit:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--color-primary-hover), var(--color-primary));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-hover),
+    var(--color-primary)
+  );
   box-shadow: var(--glow-md);
   transform: translateY(-1px);
 }
@@ -264,7 +277,9 @@
   overflow: hidden;
   border: 1px solid var(--color-border);
   cursor: pointer;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .thumb:hover {
@@ -313,7 +328,9 @@
   background: rgba(0, 0, 0, 0.6);
   border: none;
   border-radius: var(--radius-full);
-  transition: color var(--transition-fast), background-color var(--transition-fast);
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast);
 }
 
 .remove:hover {

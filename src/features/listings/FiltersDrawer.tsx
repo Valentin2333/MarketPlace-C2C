@@ -1,33 +1,33 @@
-import { useEffect } from 'react'
-import styles from './FiltersDrawer.module.css'
+import { useEffect } from "react";
+import styles from "./FiltersDrawer.module.css";
 
-export type SortOption = 'newest' | 'oldest' | 'price_asc' | 'price_desc'
+export type SortOption = "newest" | "oldest" | "price_asc" | "price_desc";
 
 export type PanelFilters = {
-  categoryId: string
-  city: string
-  minPrice: string
-  maxPrice: string
-  sort: SortOption
-}
+  categoryId: string;
+  city: string;
+  minPrice: string;
+  maxPrice: string;
+  sort: SortOption;
+};
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: 'newest', label: 'Newest' },
-  { value: 'oldest', label: 'Oldest' },
-  { value: 'price_asc', label: 'Price: low to high' },
-  { value: 'price_desc', label: 'Price: high to low' },
-]
+  { value: "newest", label: "Newest" },
+  { value: "oldest", label: "Oldest" },
+  { value: "price_asc", label: "Price: low to high" },
+  { value: "price_desc", label: "Price: high to low" },
+];
 
 type FiltersDrawerProps = {
-  open: boolean
-  draft: PanelFilters
-  categories: { id: number; name: string }[]
-  cities: string[]
-  onChange: (next: Partial<PanelFilters>) => void
-  onApply: () => void
-  onClear: () => void
-  onClose: () => void
-}
+  open: boolean;
+  draft: PanelFilters;
+  categories: { id: number; name: string }[];
+  cities: string[];
+  onChange: (next: Partial<PanelFilters>) => void;
+  onApply: () => void;
+  onClear: () => void;
+  onClose: () => void;
+};
 
 export default function FiltersDrawer({
   open,
@@ -40,27 +40,27 @@ export default function FiltersDrawer({
   onClose,
 }: FiltersDrawerProps) {
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
     return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
-    }
-  }, [open, onClose])
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [open, onClose]);
 
   return (
     <>
       <div
-        className={`${styles.overlay} ${open ? styles.overlayOpen : ''}`}
+        className={`${styles.overlay} ${open ? styles.overlayOpen : ""}`}
         onClick={onClose}
       />
 
       <aside
-        className={`${styles.drawer} ${open ? styles.drawerOpen : ''}`}
+        className={`${styles.drawer} ${open ? styles.drawerOpen : ""}`}
         aria-hidden={!open}
       >
         <div className={styles.header}>
@@ -81,8 +81,8 @@ export default function FiltersDrawer({
             <div className={styles.chips}>
               <button
                 type="button"
-                className={`${styles.chip} ${draft.categoryId === '' ? styles.chipActive : ''}`}
-                onClick={() => onChange({ categoryId: '' })}
+                className={`${styles.chip} ${draft.categoryId === "" ? styles.chipActive : ""}`}
+                onClick={() => onChange({ categoryId: "" })}
               >
                 All
               </button>
@@ -90,7 +90,7 @@ export default function FiltersDrawer({
                 <button
                   key={c.id}
                   type="button"
-                  className={`${styles.chip} ${draft.categoryId === String(c.id) ? styles.chipActive : ''}`}
+                  className={`${styles.chip} ${draft.categoryId === String(c.id) ? styles.chipActive : ""}`}
                   onClick={() => onChange({ categoryId: String(c.id) })}
                 >
                   {c.name}
@@ -104,8 +104,8 @@ export default function FiltersDrawer({
             <div className={styles.chips}>
               <button
                 type="button"
-                className={`${styles.chip} ${draft.city === '' ? styles.chipActive : ''}`}
-                onClick={() => onChange({ city: '' })}
+                className={`${styles.chip} ${draft.city === "" ? styles.chipActive : ""}`}
+                onClick={() => onChange({ city: "" })}
               >
                 All
               </button>
@@ -113,7 +113,7 @@ export default function FiltersDrawer({
                 <button
                   key={c}
                   type="button"
-                  className={`${styles.chip} ${draft.city === c ? styles.chipActive : ''}`}
+                  className={`${styles.chip} ${draft.city === c ? styles.chipActive : ""}`}
                   onClick={() => onChange({ city: c })}
                 >
                   {c}
@@ -156,7 +156,7 @@ export default function FiltersDrawer({
                 <button
                   key={o.value}
                   type="button"
-                  className={`${styles.chip} ${draft.sort === o.value ? styles.chipActive : ''}`}
+                  className={`${styles.chip} ${draft.sort === o.value ? styles.chipActive : ""}`}
                   onClick={() => onChange({ sort: o.value })}
                 >
                   {o.label}
@@ -176,5 +176,5 @@ export default function FiltersDrawer({
         </div>
       </aside>
     </>
-  )
+  );
 }

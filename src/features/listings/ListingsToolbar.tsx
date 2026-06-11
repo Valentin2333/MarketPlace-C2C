@@ -1,11 +1,11 @@
-import styles from './ListingsToolbar.module.css'
+import styles from "./ListingsToolbar.module.css";
 
 type ListingsToolbarProps = {
-  search: string
-  onSearchChange: (value: string) => void
-  activeCount: number
-  onOpenFilters: () => void
-}
+  search: string;
+  onSearchChange: (value: string) => void;
+  activeCount: number;
+  onOpenFilters: () => void;
+};
 
 export default function ListingsToolbar({
   search,
@@ -22,9 +22,13 @@ export default function ListingsToolbar({
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
       />
-      <button type="button" className={styles.filterBtn} onClick={onOpenFilters}>
-        Filters{activeCount > 0 ? ` (${activeCount})` : ''}
+      <button
+        type="button"
+        className={styles.filterBtn}
+        onClick={onOpenFilters}
+      >
+        Filters{activeCount > 0 ? ` (${activeCount})` : ""}
       </button>
     </div>
-  )
+  );
 }

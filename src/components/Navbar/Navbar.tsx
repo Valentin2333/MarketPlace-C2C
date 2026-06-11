@@ -1,89 +1,101 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { supabase } from '../../lib/supabase'
-import type { User } from '@supabase/supabase-js'
-import CreateListingModal from '../../features/listings/CreateListingModal'
-import styles from './Navbar.module.css'
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { supabase } from "../../lib/supabase";
+import type { User } from "@supabase/supabase-js";
+import CreateListingModal from "../../features/listings/CreateListingModal";
+import { useFavorites } from "../Favorites/useFavorites";
+import BrandMark from '../BrandMark/BrandMark'
+import styles from "./Navbar.module.css";
 
 type Profile = {
-  id: string
-  role: string | null
-}
+  id: string;
+  role: string | null;
+};
 
 export default function Navbar() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [createOpen, setCreateOpen] = useState(false)
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { favoriteIds } = useFavorites();
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
-  const mobileMenuRef = useRef<HTMLDivElement>(null)
-  const hamburgerRef = useRef<HTMLButtonElement>(null)
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id)
-    })
+      setUser(session?.user ?? null);
+      if (session?.user) fetchProfile(session.user.id);
+    });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id)
-      else setProfile(null)
-    })
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) fetchProfile(session.user.id);
+      else setProfile(null);
+    });
 
-    return () => subscription.unsubscribe()
-  }, [])
-
-  useEffect(() => {
-    setMenuOpen(false)
-    setCreateOpen(false)
-  }, [location.pathname])
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
-    if (!menuOpen) return
+    setMenuOpen(false);
+    setCreateOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
     const handlePointerDown = (e: PointerEvent) => {
-      const target = e.target as Node
-      if (mobileMenuRef.current?.contains(target) || hamburgerRef.current?.contains(target)) {
-        return
+      const target = e.target as Node;
+      if (
+        mobileMenuRef.current?.contains(target) ||
+        hamburgerRef.current?.contains(target)
+      ) {
+        return;
       }
-      setMenuOpen(false)
-    }
-    document.addEventListener('pointerdown', handlePointerDown)
-    return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [menuOpen])
+      setMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [menuOpen]);
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
-      .from('profiles')
-      .select('id, role')
-      .eq('id', userId)
-      .single()
-    setProfile(data)
-  }
+      .from("profiles")
+      .select("id, role")
+      .eq("id", userId)
+      .single();
+    setProfile(data);
+  };
 
   const handleCreate = () => {
-    if (user) setCreateOpen(true)
-    else navigate('/login')
-  }
+    if (user) setCreateOpen(true);
+    else navigate("/login");
+  };
 
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = profile?.role === "admin";
+  const favCount = favoriteIds.length;
 
   const isActive = (path: string) =>
-    location.pathname === path || location.pathname.startsWith(path + '/')
+    location.pathname === path || location.pathname.startsWith(path + "/");
 
   return (
     <>
       <header className={styles.header}>
         <nav className={styles.nav}>
-
           <Link to="/" className={styles.logo}>
-            <div className={styles.logoIcon}>🛒</div>
+            <BrandMark className={styles.logoIcon} />
             <span>MarketPlace</span>
           </Link>
 
-          <button type="button" className={styles.createBtn} onClick={handleCreate}>
+          <button
+            type="button"
+            className={styles.createBtn}
+            onClick={handleCreate}
+          >
             <span className={styles.createPlus}>+</span>
             Sell
           </button>
@@ -92,7 +104,7 @@ export default function Navbar() {
             {isAdmin && (
               <Link
                 to="/admin"
-                className={`${styles.navLink} ${styles.adminLink} ${isActive('/admin') ? styles.navLinkActive : ''}`}
+                className={`${styles.navLink} ${styles.adminLink} ${isActive("/admin") ? styles.navLinkActive : ""}`}
               >
                 Admin Panel
               </Link>
@@ -101,12 +113,23 @@ export default function Navbar() {
 
           <div className={styles.actions}>
             {user ? (
-              <Link
-                to={`/profile/${user.id}`}
-                className={`${styles.navLink} ${isActive('/profile') ? styles.navLinkActive : ''}`}
-              >
-                Profile
-              </Link>
+              <>
+                <Link
+                  to="/favorites"
+                  className={`${styles.navLink} ${isActive("/favorites") ? styles.navLinkActive : ""}`}
+                >
+                  Favorites
+                  {favCount > 0 && (
+                    <span className={styles.favBadge}>{favCount}</span>
+                  )}
+                </Link>
+                <Link
+                  to={`/profile/${user.id}`}
+                  className={`${styles.navLink} ${isActive("/profile") ? styles.navLinkActive : ""}`}
+                >
+                  Profile
+                </Link>
+              </>
             ) : (
               <>
                 <Link to="/login" className={styles.btnGhost}>
@@ -126,9 +149,8 @@ export default function Navbar() {
             aria-label="Toggle menu"
             aria-expanded={menuOpen}
           >
-            {menuOpen ? '✕' : '☰'}
+            {menuOpen ? "✕" : "☰"}
           </button>
-
         </nav>
       </header>
 
@@ -137,7 +159,8 @@ export default function Navbar() {
           ref={mobileMenuRef}
           className={styles.mobileMenu}
           onClick={(e) => {
-            if ((e.target as HTMLElement).closest('a, button')) setMenuOpen(false)
+            if ((e.target as HTMLElement).closest("a, button"))
+              setMenuOpen(false);
           }}
         >
           {isAdmin && (
@@ -154,12 +177,23 @@ export default function Navbar() {
           )}
 
           {user ? (
-            <Link
-              to={`/profile/${user.id}`}
-              className={`${styles.mobileLink} ${isActive('/profile') ? styles.mobileLinkActive : ''}`}
-            >
-              Profile
-            </Link>
+            <>
+              <Link
+                to="/favorites"
+                className={`${styles.mobileLink} ${isActive("/favorites") ? styles.mobileLinkActive : ""}`}
+              >
+                Favorites
+                {favCount > 0 && (
+                  <span className={styles.favBadge}>{favCount}</span>
+                )}
+              </Link>
+              <Link
+                to={`/profile/${user.id}`}
+                className={`${styles.mobileLink} ${isActive("/profile") ? styles.mobileLinkActive : ""}`}
+              >
+                Profile
+              </Link>
+            </>
           ) : (
             <>
               <Link to="/login" className={styles.mobileLink}>
@@ -173,7 +207,10 @@ export default function Navbar() {
         </div>
       )}
 
-      <CreateListingModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <CreateListingModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+      />
     </>
-  )
+  );
 }

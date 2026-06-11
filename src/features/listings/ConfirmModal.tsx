@@ -1,51 +1,51 @@
-import { useEffect } from 'react'
-import styles from './ConfirmModal.module.css'
+import { useEffect } from "react";
+import styles from "./ConfirmModal.module.css";
 
 type ConfirmModalProps = {
-  open: boolean
-  title: string
-  message: string
-  confirmLabel?: string
-  loadingLabel?: string
-  cancelLabel?: string
-  loading?: boolean
-  onConfirm: () => void
-  onClose: () => void
-}
+  open: boolean;
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  loadingLabel?: string;
+  cancelLabel?: string;
+  loading?: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+};
 
 export default function ConfirmModal({
   open,
   title,
   message,
-  confirmLabel = 'Delete',
-  loadingLabel = 'Deleting…',
-  cancelLabel = 'Cancel',
+  confirmLabel = "Delete",
+  loadingLabel = "Deleting…",
+  cancelLabel = "Cancel",
   loading = false,
   onConfirm,
   onClose,
 }: ConfirmModalProps) {
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !loading) onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
+      if (e.key === "Escape" && !loading) onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
     return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
-    }
-  }, [open, loading, onClose])
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [open, loading, onClose]);
 
   return (
     <>
       <div
-        className={`${styles.overlay} ${open ? styles.overlayOpen : ''}`}
+        className={`${styles.overlay} ${open ? styles.overlayOpen : ""}`}
         onClick={loading ? undefined : onClose}
       />
 
       <div
-        className={`${styles.modal} ${open ? styles.modalOpen : ''}`}
+        className={`${styles.modal} ${open ? styles.modalOpen : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -69,14 +69,24 @@ export default function ConfirmModal({
         </div>
 
         <div className={styles.footer}>
-          <button type="button" className={styles.cancel} onClick={onClose} disabled={loading}>
+          <button
+            type="button"
+            className={styles.cancel}
+            onClick={onClose}
+            disabled={loading}
+          >
             {cancelLabel}
           </button>
-          <button type="button" className={styles.confirm} onClick={onConfirm} disabled={loading}>
+          <button
+            type="button"
+            className={styles.confirm}
+            onClick={onConfirm}
+            disabled={loading}
+          >
             {loading ? loadingLabel : confirmLabel}
           </button>
         </div>
       </div>
     </>
-  )
+  );
 }
