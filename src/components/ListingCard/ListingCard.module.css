@@ -43,7 +43,11 @@
   place-items: center;
   font-size: var(--text-sm);
   color: var(--color-text-muted);
-  background: linear-gradient(135deg, var(--color-primary-dim), rgba(56, 189, 248, 0.03));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-dim),
+    rgba(56, 189, 248, 0.03)
+  );
 }
 
 .body {
@@ -53,6 +57,10 @@
   padding: var(--space-4);
 }
 
+.root {
+  position: relative;
+}
+
 .title {
   font-size: var(--text-base);
   font-weight: 600;
@@ -60,6 +68,7 @@
   /* Clamp to two lines so cards stay aligned. */
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

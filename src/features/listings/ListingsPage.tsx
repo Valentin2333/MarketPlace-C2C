@@ -1,8 +1,8 @@
-import ListingsToolbar from './ListingsToolbar'
-import ListingsGrid from './ListingsGrid'
-import FiltersDrawer from './FiltersDrawer'
-import { useListings } from './useListings'
-import styles from './ListingsPage.module.css'
+import ListingsToolbar from "./ListingsToolbar";
+import ListingsGrid from "./ListingsGrid";
+import FiltersDrawer from "./FiltersDrawer";
+import { useListings } from "./useListings";
+import styles from "./ListingsPage.module.css";
 
 export default function ListingsPage() {
   const {
@@ -26,9 +26,9 @@ export default function ListingsPage() {
     error,
     sentinelRef,
     saveScroll,
-  } = useListings()
+  } = useListings();
 
-  const count = total ?? listings.length
+  const count = total ?? listings.length;
 
   return (
     <div className={styles.page}>
@@ -51,7 +51,7 @@ export default function ListingsPage() {
         ) : (
           <>
             <p className={styles.resultsInfo}>
-              {count} {count === 1 ? 'listing' : 'listings'}
+              {count} {count === 1 ? "listing" : "listings"}
             </p>
             <ListingsGrid
               listings={listings}
@@ -75,5 +75,5 @@ export default function ListingsPage() {
         onClose={closeDrawer}
       />
     </div>
-  )
+  );
 }

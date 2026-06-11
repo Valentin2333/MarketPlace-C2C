@@ -1,122 +1,134 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { supabase } from '../../lib/supabase'
-import { formatPrice, formatDate } from '../../lib/format'
-import { clearListingsCache } from './useListings'
-import EditListingModal from './EditListingModal'
-import ConfirmModal from './ConfirmModal'
-import styles from './ListingDetailPage.module.css'
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { supabase } from "../../lib/supabase";
+import { formatPrice, formatDate } from "../../lib/format";
+import { clearListingsCache } from "./useListings";
+import { useToast } from "../../components/Toast/useToast";
+import EditListingModal from "./EditListingModal";
+import ConfirmModal from "./ConfirmModal";
+import FavoriteButton from "../../components/Favorites/FavoriteButton";
 
-const BUCKET = 'listing-images'
+import styles from "./ListingDetailPage.module.css";
+
+const BUCKET = "listing-images";
 
 type ListingDetail = {
-  id: string
-  title: string
-  description: string | null
-  price: number | null
-  city: string | null
-  created_at: string | null
-  categories: { name: string } | null
-  listing_images: { url: string }[] | null
-  profiles: { id: string; name: string | null; avatar_url: string | null } | null
-}
+  id: string;
+  title: string;
+  description: string | null;
+  price: number | null;
+  city: string | null;
+  created_at: string | null;
+  categories: { name: string } | null;
+  listing_images: { url: string }[] | null;
+  profiles: {
+    id: string;
+    name: string | null;
+    avatar_url: string | null;
+  } | null;
+};
 
 function pathFromUrl(url: string): string | null {
-  const marker = `/${BUCKET}/`
-  const i = url.indexOf(marker)
-  return i === -1 ? null : url.slice(i + marker.length)
+  const marker = `/${BUCKET}/`;
+  const i = url.indexOf(marker);
+  return i === -1 ? null : url.slice(i + marker.length);
 }
 
 export default function ListingDetailPage() {
-  const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
-  const location = useLocation()
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const toast = useToast();
 
   const goBack = () => {
-    if (location.key !== 'default') navigate(-1)
-    else navigate('/listings')
-  }
+    if (location.key !== "default") navigate(-1);
+    else navigate("/listings");
+  };
 
-  const [listing, setListing] = useState<ListingDetail | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [notFound, setNotFound] = useState(false)
-  const [activeImage, setActiveImage] = useState(0)
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const [editOpen, setEditOpen] = useState(false)
-  const [confirmOpen, setConfirmOpen] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [actionError, setActionError] = useState<string | null>(null)
+  const [listing, setListing] = useState<ListingDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const [activeImage, setActiveImage] = useState(0);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  const reqIdRef = useRef(0)
+  const reqIdRef = useRef(0);
 
   const load = useCallback(async () => {
-    if (!id) return
-    const reqId = ++reqIdRef.current
-    setLoading(true)
-    setNotFound(false)
-    setActiveImage(0)
+    if (!id) return;
+    const reqId = ++reqIdRef.current;
+    setLoading(true);
+    setNotFound(false);
+    setActiveImage(0);
 
     const { data, error } = await supabase
-      .from('listings')
+      .from("listings")
       .select(
-        'id, title, description, price, city, created_at, categories ( name ), listing_images ( url ), profiles ( id, name, avatar_url )',
+        "id, title, description, price, city, created_at, categories ( name ), listing_images ( url ), profiles ( id, name, avatar_url )",
       )
-      .eq('id', id)
-      .maybeSingle()
+      .eq("id", id)
+      .maybeSingle();
 
-    if (reqId !== reqIdRef.current) return
+    if (reqId !== reqIdRef.current) return;
 
     if (error || !data) {
-      setNotFound(true)
-      setListing(null)
+      setNotFound(true);
+      setListing(null);
     } else {
-      setListing(data as unknown as ListingDetail)
+      setListing(data as unknown as ListingDetail);
     }
-    setLoading(false)
-  }, [id])
+    setLoading(false);
+  }, [id]);
 
   useEffect(() => {
-    load()
-  }, [load])
+    load();
+  }, [load]);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => setCurrentUserId(user?.id ?? null))
-  }, [])
+    supabase.auth
+      .getUser()
+      .then(({ data: { user } }) => setCurrentUserId(user?.id ?? null));
+  }, []);
 
   const confirmDelete = async () => {
-    if (!listing) return
+    if (!listing) return;
 
-    setDeleting(true)
-    setActionError(null)
+    setDeleting(true);
 
     const paths = (listing.listing_images ?? [])
       .map((img) => pathFromUrl(img.url))
-      .filter((p): p is string => !!p)
+      .filter((p): p is string => !!p);
 
     if (paths.length > 0) {
-      await supabase.storage.from(BUCKET).remove(paths)
+      await supabase.storage.from(BUCKET).remove(paths);
     }
-    await supabase.from('listing_images').delete().eq('listing_id', listing.id)
-    const { error } = await supabase.from('listings').delete().eq('id', listing.id)
+    await supabase.from("listing_images").delete().eq("listing_id", listing.id);
+    const { error } = await supabase
+      .from("listings")
+      .delete()
+      .eq("id", listing.id);
 
-    setDeleting(false)
+    setDeleting(false);
 
     if (error) {
-      setConfirmOpen(false)
-      setActionError(error.message)
-      return
+      setConfirmOpen(false);
+      toast.error(error.message);
+      return;
     }
 
-    clearListingsCache()
-    navigate('/listings')
-  }
+    clearListingsCache();
+    toast.success("Listing deleted.");
+    navigate("/listings");
+  };
 
   if (loading) {
     return (
       <div className={styles.page}>
         <div className={styles.state}>Loading…</div>
       </div>
-    )
+    );
   }
 
   if (notFound || !listing) {
@@ -125,21 +137,25 @@ export default function ListingDetailPage() {
         <div className={styles.state}>
           <h2>Listing not found</h2>
           <p>This listing doesn’t exist or has been removed.</p>
-          <button type="button" onClick={goBack} className={styles.back}>← Back to listings</button>
+          <button type="button" onClick={goBack} className={styles.back}>
+            ← Back to listings
+          </button>
         </div>
       </div>
-    )
+    );
   }
 
-  const images = listing.listing_images ?? []
-  const hasImages = images.length > 0
-  const seller = listing.profiles
-  const isOwner = !!currentUserId && seller?.id === currentUserId
+  const images = listing.listing_images ?? [];
+  const hasImages = images.length > 0;
+  const seller = listing.profiles;
+  const isOwner = !!currentUserId && seller?.id === currentUserId;
 
   return (
     <div className={styles.page}>
       <div className={styles.container}>
-        <button type="button" onClick={goBack} className={styles.back}>← Back to listings</button>
+        <button type="button" onClick={goBack} className={styles.back}>
+          ← Back to listings
+        </button>
 
         <div className={styles.layout}>
           <div className={styles.gallery}>
@@ -150,13 +166,17 @@ export default function ListingDetailPage() {
                 <div className={styles.placeholder}>No image</div>
               )}
 
+              <FavoriteButton listingId={listing.id} variant="detail" />
+
               {images.length > 1 && (
                 <>
                   <button
                     type="button"
                     className={`${styles.navArrow} ${styles.navPrev}`}
                     onClick={() =>
-                      setActiveImage((i) => (i - 1 + images.length) % images.length)
+                      setActiveImage(
+                        (i) => (i - 1 + images.length) % images.length,
+                      )
                     }
                     aria-label="Previous image"
                   >
@@ -165,7 +185,9 @@ export default function ListingDetailPage() {
                   <button
                     type="button"
                     className={`${styles.navArrow} ${styles.navNext}`}
-                    onClick={() => setActiveImage((i) => (i + 1) % images.length)}
+                    onClick={() =>
+                      setActiveImage((i) => (i + 1) % images.length)
+                    }
                     aria-label="Next image"
                   >
                     ›
@@ -180,7 +202,7 @@ export default function ListingDetailPage() {
                   <button
                     key={`${img.url}-${i}`}
                     type="button"
-                    className={`${styles.thumb} ${i === activeImage ? styles.thumbActive : ''}`}
+                    className={`${styles.thumb} ${i === activeImage ? styles.thumbActive : ""}`}
                     onClick={() => setActiveImage(i)}
                     aria-label={`Image ${i + 1}`}
                   >
@@ -199,13 +221,17 @@ export default function ListingDetailPage() {
             <h1 className={styles.title}>{listing.title}</h1>
             <p className={styles.price}>{formatPrice(listing.price)}</p>
             <p className={styles.meta}>
-              📍 {listing.city || 'Location not specified'}
+              📍 {listing.city || "Location not specified"}
               {listing.created_at && ` · ${formatDate(listing.created_at)}`}
             </p>
 
             {isOwner && (
               <div className={styles.ownerActions}>
-                <button type="button" className={styles.editBtn} onClick={() => setEditOpen(true)}>
+                <button
+                  type="button"
+                  className={styles.editBtn}
+                  onClick={() => setEditOpen(true)}
+                >
                   Edit
                 </button>
                 <button
@@ -214,11 +240,10 @@ export default function ListingDetailPage() {
                   onClick={() => setConfirmOpen(true)}
                   disabled={deleting}
                 >
-                  {deleting ? 'Deleting…' : 'Delete'}
+                  {deleting ? "Deleting…" : "Delete"}
                 </button>
               </div>
             )}
-            {actionError && <p className={styles.actionError}>{actionError}</p>}
 
             {listing.description && (
               <>
@@ -234,12 +259,19 @@ export default function ListingDetailPage() {
               <Link to={`/profile/${seller.id}`} className={styles.seller}>
                 <div className={styles.sellerAvatar}>
                   {seller.avatar_url ? (
-                    <img src={seller.avatar_url} alt={seller.name ?? 'Seller'} />
+                    <img
+                      src={seller.avatar_url}
+                      alt={seller.name ?? "Seller"}
+                    />
                   ) : (
-                    <span>{(seller.name ?? '?').slice(0, 1).toUpperCase()}</span>
+                    <span>
+                      {(seller.name ?? "?").slice(0, 1).toUpperCase()}
+                    </span>
                   )}
                 </div>
-                <span className={styles.sellerName}>{seller.name || 'Unnamed user'}</span>
+                <span className={styles.sellerName}>
+                  {seller.name || "Unnamed user"}
+                </span>
               </Link>
             ) : (
               <p className={styles.meta}>Unknown seller</p>
@@ -254,8 +286,8 @@ export default function ListingDetailPage() {
           open={editOpen}
           onClose={() => setEditOpen(false)}
           onSaved={() => {
-            setEditOpen(false)
-            load()
+            setEditOpen(false);
+            load();
           }}
         />
       )}
@@ -273,5 +305,5 @@ export default function ListingDetailPage() {
         />
       )}
     </div>
-  )
+  );
 }

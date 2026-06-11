@@ -1,61 +1,63 @@
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
-import { supabase } from '../../lib/supabase'
-import AuthHeader from './AuthHeader'
-import styles from './Register.module.css'
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "../../lib/supabase";
+import AuthHeader from "./AuthHeader";
+import styles from "./Register.module.css";
 
 type RegisterFormData = {
-  name: string
-  email: string
-  password: string
-  confirmPassword: string
-}
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+};
 
 export default function Register() {
-  const navigate = useNavigate()
-  const [serverError, setServerError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const navigate = useNavigate();
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const {
     register,
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm<RegisterFormData>()
+  } = useForm<RegisterFormData>();
 
   const onSubmit = async (data: RegisterFormData) => {
-    setLoading(true)
-    setServerError(null)
+    setLoading(true);
+    setServerError(null);
 
     const { error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
       options: { data: { name: data.name } },
-    })
+    });
 
-    setLoading(false)
+    setLoading(false);
 
     if (error) {
-      setServerError(error.message)
-      return
+      setServerError(error.message);
+      return;
     }
 
-    navigate('/listings')
-  }
+    navigate("/listings");
+  };
 
   return (
     <div className={styles.page}>
       <div className={styles.cardWrap}>
         <div className={styles.card}>
-
           <AuthHeader
             title="Create an account"
             subtitle="Buy and sell anything, locally."
           />
 
-          <form className={styles.form} onSubmit={handleSubmit(onSubmit)} noValidate>
-
+          <form
+            className={styles.form}
+            onSubmit={handleSubmit(onSubmit)}
+            noValidate
+          >
             {serverError && (
               <div className={styles.serverError}>{serverError}</div>
             )}
@@ -67,12 +69,17 @@ export default function Register() {
                 type="text"
                 placeholder="John Doe"
                 aria-invalid={!!errors.name}
-                {...register('name', {
-                  required: 'Name is required',
-                  minLength: { value: 2, message: 'Name must be at least 2 characters' },
+                {...register("name", {
+                  required: "Name is required",
+                  minLength: {
+                    value: 2,
+                    message: "Name must be at least 2 characters",
+                  },
                 })}
               />
-              {errors.name && <span className={styles.errorMsg}>{errors.name.message}</span>}
+              {errors.name && (
+                <span className={styles.errorMsg}>{errors.name.message}</span>
+              )}
             </div>
 
             <div className={styles.field}>
@@ -82,12 +89,17 @@ export default function Register() {
                 type="email"
                 placeholder="you@example.com"
                 aria-invalid={!!errors.email}
-                {...register('email', {
-                  required: 'Email is required',
-                  pattern: { value: /^\S+@\S+\.\S+$/, message: 'Enter a valid email' },
+                {...register("email", {
+                  required: "Email is required",
+                  pattern: {
+                    value: /^\S+@\S+\.\S+$/,
+                    message: "Enter a valid email",
+                  },
                 })}
               />
-              {errors.email && <span className={styles.errorMsg}>{errors.email.message}</span>}
+              {errors.email && (
+                <span className={styles.errorMsg}>{errors.email.message}</span>
+              )}
             </div>
 
             <div className={styles.field}>
@@ -97,12 +109,19 @@ export default function Register() {
                 type="password"
                 placeholder="Min. 8 characters"
                 aria-invalid={!!errors.password}
-                {...register('password', {
-                  required: 'Password is required',
-                  minLength: { value: 8, message: 'Password must be at least 8 characters' },
+                {...register("password", {
+                  required: "Password is required",
+                  minLength: {
+                    value: 8,
+                    message: "Password must be at least 8 characters",
+                  },
                 })}
               />
-              {errors.password && <span className={styles.errorMsg}>{errors.password.message}</span>}
+              {errors.password && (
+                <span className={styles.errorMsg}>
+                  {errors.password.message}
+                </span>
+              )}
             </div>
 
             <div className={styles.field}>
@@ -112,28 +131,29 @@ export default function Register() {
                 type="password"
                 placeholder="Repeat your password"
                 aria-invalid={!!errors.confirmPassword}
-                {...register('confirmPassword', {
-                  required: 'Please confirm your password',
-                  validate: (val) => val === watch('password') || 'Passwords do not match',
+                {...register("confirmPassword", {
+                  required: "Please confirm your password",
+                  validate: (val) =>
+                    val === watch("password") || "Passwords do not match",
                 })}
               />
               {errors.confirmPassword && (
-                <span className={styles.errorMsg}>{errors.confirmPassword.message}</span>
+                <span className={styles.errorMsg}>
+                  {errors.confirmPassword.message}
+                </span>
               )}
             </div>
 
             <button className={styles.submit} type="submit" disabled={loading}>
-              {loading ? 'Creating account...' : 'Create account'}
+              {loading ? "Creating account..." : "Create account"}
             </button>
-
           </form>
 
           <p className={styles.footer}>
             Already have an account? <Link to="/login">Sign in</Link>
           </p>
-
         </div>
       </div>
     </div>
-  )
+  );
 }

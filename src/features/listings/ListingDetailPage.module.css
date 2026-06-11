@@ -117,7 +117,11 @@
   place-items: center;
   color: var(--color-text-muted);
   font-size: var(--text-sm);
-  background: linear-gradient(135deg, var(--color-primary-dim), rgba(56, 189, 248, 0.03));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-dim),
+    rgba(56, 189, 248, 0.03)
+  );
 }
 
 .thumbs {
@@ -135,7 +139,9 @@
   padding: 0;
   cursor: pointer;
   background: var(--color-surface-solid);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .thumb img {
@@ -198,7 +204,12 @@
 
 .divider {
   height: 1px;
-  background: linear-gradient(to right, transparent, var(--color-border), transparent);
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--color-border),
+    transparent
+  );
   margin: var(--space-6) 0;
 }
 
@@ -227,7 +238,9 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .seller:hover {
@@ -243,7 +256,11 @@
   overflow: hidden;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, var(--color-primary-dim), rgba(56, 189, 248, 0.04));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-dim),
+    rgba(56, 189, 248, 0.04)
+  );
   border: 1px solid var(--color-border);
   color: var(--color-primary);
   font-weight: 700;
@@ -283,7 +300,9 @@
   border: none;
   border-radius: var(--radius-md);
   box-shadow: var(--glow-sm);
-  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+  transition:
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
 }
 
 .editBtn:hover {
@@ -303,16 +322,13 @@
   background: transparent;
   border: 1px solid rgba(248, 113, 113, 0.4);
   border-radius: var(--radius-md);
-  transition: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .deleteBtn:hover:not(:disabled) {
   background-color: rgba(248, 113, 113, 0.08);
   border-color: rgba(248, 113, 113, 0.6);
-}
-
-.actionError {
-  margin-top: var(--space-3);
-  font-size: var(--text-sm);
-  color: var(--color-error);
 }
