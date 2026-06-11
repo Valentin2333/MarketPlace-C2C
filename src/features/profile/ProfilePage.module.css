@@ -29,7 +29,7 @@
     135deg,
     rgba(56, 189, 248, 0.35) 0%,
     rgba(56, 189, 248, 0.05) 40%,
-    rgba(56, 189, 248, 0.0) 60%,
+    rgba(56, 189, 248, 0) 60%,
     rgba(56, 189, 248, 0.15) 100%
   );
   box-shadow: var(--glow-lg), var(--shadow-lg);
@@ -66,7 +66,11 @@
   overflow: hidden;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, var(--color-primary-dim), rgba(56, 189, 248, 0.04));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-dim),
+    rgba(56, 189, 248, 0.04)
+  );
   border: 1px solid var(--color-border);
   box-shadow: var(--glow-sm);
 }
@@ -101,7 +105,11 @@
 }
 
 .avatarEdit:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--color-primary-hover), var(--color-primary));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-hover),
+    var(--color-primary)
+  );
   box-shadow: var(--glow-md);
 }
 
@@ -139,7 +147,12 @@
 /* Divider (component-scoped copy of the global one) */
 .divider {
   height: 1px;
-  background: linear-gradient(to right, transparent, var(--color-border), transparent);
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--color-border),
+    transparent
+  );
   margin: var(--space-8) 0;
 }
 
@@ -206,7 +219,11 @@
 }
 
 .submit:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--color-primary-hover), var(--color-primary));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-hover),
+    var(--color-primary)
+  );
   box-shadow: var(--glow-md);
   transform: translateY(-1px);
 }
@@ -318,7 +335,9 @@
   border: none;
   border-radius: var(--radius-md);
   box-shadow: var(--glow-sm);
-  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+  transition:
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
 }
 
 .linkBtn:hover {
@@ -338,7 +357,9 @@
   background: transparent;
   border: 1px solid rgba(248, 113, 113, 0.4);
   border-radius: var(--radius-md);
-  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .logout:hover {

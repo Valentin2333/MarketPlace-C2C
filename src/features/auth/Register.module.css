@@ -18,12 +18,10 @@
     135deg,
     rgba(56, 189, 248, 0.35) 0%,
     rgba(56, 189, 248, 0.05) 40%,
-    rgba(56, 189, 248, 0.0) 60%,
+    rgba(56, 189, 248, 0) 60%,
     rgba(56, 189, 248, 0.15) 100%
   );
-  box-shadow:
-    var(--glow-lg),
-    var(--shadow-lg);
+  box-shadow: var(--glow-lg), var(--shadow-lg);
 }
 
 .card {
@@ -125,7 +123,11 @@
 }
 
 .submit:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--color-primary-hover), var(--color-primary));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-hover),
+    var(--color-primary)
+  );
   box-shadow: var(--glow-md);
   transform: translateY(-1px);
 }

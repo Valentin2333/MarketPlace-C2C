@@ -1,15 +1,15 @@
-import type { RefObject } from 'react'
-import ListingCard from '../../components/ListingCard/ListingCard'
-import type { ListingRow } from './useListings'
-import styles from './ListingsGrid.module.css'
+import type { RefObject } from "react";
+import ListingCard from "../../components/ListingCard/ListingCard";
+import type { ListingRow } from "./useListings";
+import styles from "./ListingsGrid.module.css";
 
 type ListingsGridProps = {
-  listings: ListingRow[]
-  hasMore: boolean
-  loadingMore: boolean
-  sentinelRef: RefObject<HTMLDivElement | null>
-  onCardClick: () => void
-}
+  listings: ListingRow[];
+  hasMore: boolean;
+  loadingMore: boolean;
+  sentinelRef: RefObject<HTMLDivElement | null>;
+  onCardClick: () => void;
+};
 
 export default function ListingsGrid({
   listings,
@@ -33,8 +33,10 @@ export default function ListingsGrid({
           />
         ))}
       </div>
-      {hasMore && <div ref={sentinelRef} className={styles.sentinel} aria-hidden="true" />}
+      {hasMore && (
+        <div ref={sentinelRef} className={styles.sentinel} aria-hidden="true" />
+      )}
       {loadingMore && <div className={styles.loadingMore}>Loading more…</div>}
     </>
-  )
+  );
 }
