@@ -276,6 +276,21 @@ export default function ListingDetailPage() {
             ) : (
               <p className={styles.meta}>Unknown seller</p>
             )}
+            {seller && !isOwner && (
+              <button
+                type="button"
+                className={styles.messageBtn}
+                onClick={() => {
+                  if (currentUserId) {
+                    navigate(`/messages/${listing.id}/${seller.id}`);
+                  } else {
+                    navigate("/login");
+                  }
+                }}
+              >
+                💬 Message seller
+              </button>
+            )}
           </div>
         </div>
       </div>
