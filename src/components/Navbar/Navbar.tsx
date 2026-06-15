@@ -4,7 +4,7 @@ import { supabase } from "../../lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import CreateListingModal from "../../features/listings/CreateListingModal";
 import { useFavorites } from "../Favorites/useFavorites";
-import BrandMark from '../BrandMark/BrandMark'
+import BrandMark from "../BrandMark/BrandMark";
 import styles from "./Navbar.module.css";
 
 type Profile = {
@@ -124,6 +124,12 @@ export default function Navbar() {
                   )}
                 </Link>
                 <Link
+                  to="/messages"
+                  className={`${styles.navLink} ${isActive("/messages") ? styles.navLinkActive : ""}`}
+                >
+                  Messages
+                </Link>
+                <Link
                   to={`/profile/${user.id}`}
                   className={`${styles.navLink} ${isActive("/profile") ? styles.navLinkActive : ""}`}
                 >
@@ -186,6 +192,12 @@ export default function Navbar() {
                 {favCount > 0 && (
                   <span className={styles.favBadge}>{favCount}</span>
                 )}
+              </Link>
+              <Link
+                to="/messages"
+                className={`${styles.navLink} ${isActive("/messages") ? styles.navLinkActive : ""}`}
+              >
+                Messages
               </Link>
               <Link
                 to={`/profile/${user.id}`}

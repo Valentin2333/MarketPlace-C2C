@@ -14,6 +14,8 @@ import Navbar from "./components/Navbar/Navbar";
 import Footer from "./components/Footer/Footer";
 import ScrollToTop from "./components/ScrollToTop/ScrollToTop";
 import FavoritesPage from "./features/favorites/FavoritesPage";
+import MessagesPage from "./features/messages/MessagesPage";
+import ChatThreadPage from "./features/messages/ChatThreadPage";
 
 export default function App() {
   return (
@@ -33,6 +35,11 @@ export default function App() {
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/favorites" element={<FavoritesPage />} />
+        <Route path="/messages" element={<MessagesPage />} />
+        <Route
+          path="/messages/:listingId/:otherId"
+          element={<ChatThreadPage />}
+        />
 
         <Route path="/" element={<Navigate to="/listings" replace />} />
         <Route path="*" element={<Navigate to="/listings" replace />} />
