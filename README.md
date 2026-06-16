@@ -4,6 +4,10 @@ A consumer-to-consumer (C2C) listings platform where anyone can post ads to sell
 
 **Live demo:** https://marketplacec2c.netlify.app/
 
+**Test Email:** test@test.com
+
+**Test Password:** 12345678
+
 ---
 
 ## Features
@@ -20,17 +24,17 @@ A consumer-to-consumer (C2C) listings platform where anyone can post ads to sell
 
 ## Tech stack
 
-| Area | Choice |
-| --- | --- |
-| Framework | React 19 |
-| Language | TypeScript |
-| Build tool | Vite |
-| Routing | React Router 7 |
-| Forms | React Hook Form |
-| Styling | CSS Modules + a global stylesheet |
-| Icons | MUI Icons |
+| Area           | Choice                             |
+| -------------- | ---------------------------------- |
+| Framework      | React 19                           |
+| Language       | TypeScript                         |
+| Build tool     | Vite                               |
+| Routing        | React Router 7                     |
+| Forms          | React Hook Form                    |
+| Styling        | CSS Modules + a global stylesheet  |
+| Icons          | MUI Icons                          |
 | Backend (BaaS) | Supabase - Postgres, Auth, Storage |
-| Hosting | Netlify |
+| Hosting        | Netlify                            |
 
 ## Project structure
 
@@ -107,12 +111,12 @@ The app starts on the URL Vite prints (by default http://localhost:5173).
 
 ## Available scripts
 
-| Script | Description |
-| --- | --- |
-| `npm run dev` | Start the Vite dev server |
-| `npm run build` | Type-check and build for production |
+| Script            | Description                          |
+| ----------------- | ------------------------------------ |
+| `npm run dev`     | Start the Vite dev server            |
+| `npm run build`   | Type-check and build for production  |
 | `npm run preview` | Preview the production build locally |
-| `npm run lint` | Run ESLint over the project |
+| `npm run lint`    | Run ESLint over the project          |
 
 ## Deployment
 

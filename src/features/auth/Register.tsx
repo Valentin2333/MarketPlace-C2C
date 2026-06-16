@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import { friendlyAuthError } from "../../lib/authErrors";
 import AuthHeader from "./AuthHeader";
 import styles from "./Register.module.css";
 
@@ -37,7 +38,7 @@ export default function Register() {
     setLoading(false);
 
     if (error) {
-      setServerError(error.message);
+      setServerError(friendlyAuthError(error.message));
       return;
     }
 
@@ -92,8 +93,9 @@ export default function Register() {
                 {...register("email", {
                   required: "Email is required",
                   pattern: {
-                    value: /^\S+@\S+\.\S+$/,
-                    message: "Enter a valid email",
+                    value: /^\S+@\S+\.\S{2,}$/,
+                    message:
+                      "Enter a valid email, like you@example.com (check the domain after the @, and make sure it is real)",
                   },
                 })}
               />
