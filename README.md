@@ -4,6 +4,10 @@ A consumer-to-consumer (C2C) listings platform where anyone can post ads to sell
 
 **Live demo:** https://marketplacec2c.netlify.app/
 
+**Test Email:** test@test.com
+
+**Test Password:** 12345678
+
 ---
 
 ## Features
