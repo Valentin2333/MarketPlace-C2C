@@ -150,17 +150,25 @@
 
 .bubbleRow {
   display: flex;
+  flex-direction: column;
   max-width: 80%;
 }
 
 .mine {
   align-self: flex-end;
-  justify-content: flex-end;
+  align-items: flex-end;
 }
 
 .theirs {
   align-self: flex-start;
-  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+.status {
+  margin-top: 2px;
+  padding: 0 var(--space-1);
+  font-size: 0.65rem;
+  color: var(--color-text-faint);
 }
 
 .bubble {

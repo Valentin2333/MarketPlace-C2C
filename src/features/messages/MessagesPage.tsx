@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { formatDate } from "../../lib/format";
@@ -11,6 +11,7 @@ type MessageRow = {
   receiver_id: string;
   body: string;
   created_at: string | null;
+  read_at: string | null;
 };
 
 type ProfileLite = {
@@ -32,107 +33,99 @@ type Conversation = {
   lastBody: string;
   lastAt: string | null;
   lastFromMe: boolean;
+  unread: number;
   listing: ListingLite | null;
   other: ProfileLite | null;
 };
 
 export default function MessagesPage() {
   const navigate = useNavigate();
-  const [userId, setUserId] = useState<string | null>(null);
-  const [authReady, setAuthReady] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUserId(user?.id ?? null);
-      setAuthReady(true);
-    });
-  }, []);
+  const load = useCallback(async (uid: string) => {
+    const { data: rows } = await supabase
+      .from("messages")
+      .select(
+        "id, listing_id, sender_id, receiver_id, body, created_at, read_at",
+      )
+      .or(`sender_id.eq.${uid},receiver_id.eq.${uid}`)
+      .order("created_at", { ascending: false });
 
-  useEffect(() => {
-    if (!authReady) return;
-    if (!userId) {
-      navigate("/login");
-      return;
-    }
+    const messages = (rows ?? []) as MessageRow[];
 
-    let active = true;
-
-    const load = async () => {
-      setLoading(true);
-
-      const { data: rows } = await supabase
-        .from("messages")
-        .select("id, listing_id, sender_id, receiver_id, body, created_at")
-        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-        .order("created_at", { ascending: false });
-
-      if (!active) return;
-
-      const messages = (rows ?? []) as MessageRow[];
-
-      const grouped = new Map<string, Conversation>();
-      for (const m of messages) {
-        const otherId = m.sender_id === userId ? m.receiver_id : m.sender_id;
-        const key = `${m.listing_id}::${otherId}`;
-        if (grouped.has(key)) continue;
-        grouped.set(key, {
+    const grouped = new Map<string, Conversation>();
+    for (const m of messages) {
+      const otherId = m.sender_id === uid ? m.receiver_id : m.sender_id;
+      const key = `${m.listing_id}::${otherId}`;
+      let convo = grouped.get(key);
+      if (!convo) {
+        convo = {
           key,
           listingId: m.listing_id,
           otherId,
           lastBody: m.body,
           lastAt: m.created_at,
-          lastFromMe: m.sender_id === userId,
+          lastFromMe: m.sender_id === uid,
+          unread: 0,
           listing: null,
           other: null,
-        });
+        };
+        grouped.set(key, convo);
       }
+      if (m.receiver_id === uid && m.read_at === null) {
+        convo.unread += 1;
+      }
+    }
 
-      const convos = Array.from(grouped.values());
+    const convos = Array.from(grouped.values());
+    const otherIds = Array.from(new Set(convos.map((c) => c.otherId)));
+    const listingIds = Array.from(new Set(convos.map((c) => c.listingId)));
 
-      const otherIds = Array.from(new Set(convos.map((c) => c.otherId)));
-      const listingIds = Array.from(new Set(convos.map((c) => c.listingId)));
+    const [{ data: profiles }, { data: listings }] = await Promise.all([
+      otherIds.length
+        ? supabase
+            .from("profiles")
+            .select("id, name, avatar_url")
+            .in("id", otherIds)
+        : Promise.resolve({ data: [] as ProfileLite[] }),
+      listingIds.length
+        ? supabase
+            .from("listings")
+            .select("id, title, listing_images ( url )")
+            .in("id", listingIds)
+        : Promise.resolve({ data: [] as ListingLite[] }),
+    ]);
 
-      const [{ data: profiles }, { data: listings }] = await Promise.all([
-        otherIds.length
-          ? supabase
-              .from("profiles")
-              .select("id, name, avatar_url")
-              .in("id", otherIds)
-          : Promise.resolve({ data: [] as ProfileLite[] }),
-        listingIds.length
-          ? supabase
-              .from("listings")
-              .select("id, title, listing_images ( url )")
-              .in("id", listingIds)
-          : Promise.resolve({ data: [] as ListingLite[] }),
-      ]);
+    const profileMap = new Map(
+      ((profiles ?? []) as ProfileLite[]).map((p) => [p.id, p]),
+    );
+    const listingMap = new Map(
+      ((listings ?? []) as ListingLite[]).map((l) => [l.id, l]),
+    );
 
+    setConversations(
+      convos.map((c) => ({
+        ...c,
+        other: profileMap.get(c.otherId) ?? null,
+        listing: listingMap.get(c.listingId) ?? null,
+      })),
+    );
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    supabase.auth.getUser().then(({ data: { user } }) => {
       if (!active) return;
-
-      const profileMap = new Map(
-        ((profiles ?? []) as ProfileLite[]).map((p) => [p.id, p]),
-      );
-      const listingMap = new Map(
-        ((listings ?? []) as ListingLite[]).map((l) => [l.id, l]),
-      );
-
-      setConversations(
-        convos.map((c) => ({
-          ...c,
-          other: profileMap.get(c.otherId) ?? null,
-          listing: listingMap.get(c.listingId) ?? null,
-        })),
-      );
-      setLoading(false);
-    };
-
-    load();
+      const uid = user?.id ?? null;
+      if (uid) load(uid);
+      else navigate("/login");
+    });
     return () => {
       active = false;
     };
-  }, [authReady, userId, navigate]);
+  }, [navigate, load]);
 
   if (loading) {
     return (
@@ -164,7 +157,7 @@ export default function MessagesPage() {
                 <Link
                   key={c.key}
                   to={`/messages/${c.listingId}/${c.otherId}`}
-                  className={styles.row}
+                  className={`${styles.row} ${c.unread > 0 ? styles.rowUnread : ""}`}
                 >
                   <div className={styles.thumb}>
                     {thumb ? (
@@ -188,6 +181,9 @@ export default function MessagesPage() {
                       {c.lastBody}
                     </span>
                   </div>
+                  {c.unread > 0 && (
+                    <span className={styles.unreadDot}>{c.unread}</span>
+                  )}
                 </Link>
               );
             })}
