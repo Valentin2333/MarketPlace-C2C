@@ -29,7 +29,7 @@ export default function Register() {
     setLoading(true);
     setServerError(null);
 
-    const { error } = await supabase.auth.signUp({
+    const { data: result, error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
       options: { data: { name: data.name } },
@@ -39,6 +39,11 @@ export default function Register() {
 
     if (error) {
       setServerError(friendlyAuthError(error.message));
+      return;
+    }
+
+    if (result.user && result.user.identities?.length === 0) {
+      setServerError(friendlyAuthError("User already registered"));
       return;
     }
 
@@ -95,7 +100,7 @@ export default function Register() {
                   pattern: {
                     value: /^\S+@\S+\.\S{2,}$/,
                     message:
-                      "Enter a valid email, like you@example.com (check the domain after the @, and make sure it is real)",
+                      "Enter a valid email, like you@example.com (check the domain after the @ symbol)",
                   },
                 })}
               />
