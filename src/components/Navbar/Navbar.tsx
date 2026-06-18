@@ -4,7 +4,9 @@ import { supabase } from "../../lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import CreateListingModal from "../../features/listings/CreateListingModal";
 import { useFavorites } from "../Favorites/useFavorites";
-import BrandMark from "../BrandMark/BrandMark";
+import { useUnread } from "../Messages/useUnread";
+
+import BrandMark from '../BrandMark/BrandMark'
 import styles from "./Navbar.module.css";
 
 type Profile = {
@@ -16,6 +18,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { favoriteIds } = useFavorites();
+  const { unreadCount } = useUnread();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -128,6 +131,9 @@ export default function Navbar() {
                   className={`${styles.navLink} ${isActive("/messages") ? styles.navLinkActive : ""}`}
                 >
                   Messages
+                  {unreadCount > 0 && (
+                    <span className={styles.favBadge}>{unreadCount}</span>
+                  )}
                 </Link>
                 <Link
                   to={`/profile/${user.id}`}
@@ -195,9 +201,12 @@ export default function Navbar() {
               </Link>
               <Link
                 to="/messages"
-                className={`${styles.navLink} ${isActive("/messages") ? styles.navLinkActive : ""}`}
+                className={`${styles.mobileLink} ${isActive("/messages") ? styles.mobileLinkActive : ""}`}
               >
                 Messages
+                {unreadCount > 0 && (
+                  <span className={styles.favBadge}>{unreadCount}</span>
+                )}
               </Link>
               <Link
                 to={`/profile/${user.id}`}

@@ -137,3 +137,31 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Unread */
+.rowUnread {
+  border-color: var(--color-border-hover);
+  background: var(--color-surface-2);
+}
+
+.rowUnread .rowName,
+.rowUnread .rowPreview {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.unreadDot {
+  flex-shrink: 0;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  color: #040d18;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: var(--glow-sm);
+}

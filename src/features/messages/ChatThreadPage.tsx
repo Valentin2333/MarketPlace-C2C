@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useToast } from "../../components/Toast/useToast";
+import { useUnread } from "../../components/Messages/useUnread";
 import styles from "./ChatThreadPage.module.css";
 
 type Message = {
@@ -10,6 +11,7 @@ type Message = {
   receiver_id: string;
   body: string;
   created_at: string | null;
+  read_at: string | null;
 };
 
 type ProfileLite = {
@@ -23,6 +25,8 @@ type ListingLite = {
   title: string;
   listing_images: { url: string }[] | null;
 };
+
+const MESSAGE_COLUMNS = "id, sender_id, receiver_id, body, created_at, read_at";
 
 function formatTime(value: string | null): string {
   if (!value) return "";
@@ -43,6 +47,7 @@ export default function ChatThreadPage() {
   }>();
   const navigate = useNavigate();
   const toast = useToast();
+  const { markConversationRead } = useUnread();
 
   const [userId, setUserId] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
@@ -54,6 +59,18 @@ export default function ChatThreadPage() {
   const [sending, setSending] = useState(false);
 
   const messagesRef = useRef<HTMLDivElement>(null);
+
+  const markThreadRead = useCallback(async () => {
+    if (!userId || !listingId || !otherId) return;
+    await supabase
+      .from("messages")
+      .update({ read_at: new Date().toISOString() })
+      .eq("listing_id", listingId)
+      .eq("sender_id", otherId)
+      .eq("receiver_id", userId)
+      .is("read_at", null);
+    markConversationRead(listingId, otherId);
+  }, [userId, listingId, otherId, markConversationRead]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -83,7 +100,7 @@ export default function ChatThreadPage() {
         await Promise.all([
           supabase
             .from("messages")
-            .select("id, sender_id, receiver_id, body, created_at")
+            .select(MESSAGE_COLUMNS)
             .eq("listing_id", listingId)
             .or(
               `and(sender_id.eq.${userId},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${userId})`,
@@ -103,17 +120,22 @@ export default function ChatThreadPage() {
 
       if (!active) return;
 
-      setMessages((msgs ?? []) as Message[]);
+      const loaded = (msgs ?? []) as Message[];
+      setMessages(loaded);
       setOther((profile ?? null) as ProfileLite | null);
       setListing((list ?? null) as ListingLite | null);
       setLoading(false);
+
+      if (loaded.some((m) => m.receiver_id === userId && m.read_at === null)) {
+        markThreadRead();
+      }
     };
 
     load();
     return () => {
       active = false;
     };
-  }, [authReady, userId, listingId, otherId, navigate]);
+  }, [authReady, userId, listingId, otherId, navigate, markThreadRead]);
 
   useEffect(() => {
     const el = messagesRef.current;
@@ -134,7 +156,7 @@ export default function ChatThreadPage() {
         receiver_id: otherId,
         body: text,
       })
-      .select("id, sender_id, receiver_id, body, created_at")
+      .select(MESSAGE_COLUMNS)
       .single();
 
     setSending(false);
@@ -144,7 +166,10 @@ export default function ChatThreadPage() {
       return;
     }
 
-    setMessages((prev) => [...prev, data as Message]);
+    const sent = data as Message;
+    setMessages((prev) =>
+      prev.some((x) => x.id === sent.id) ? prev : [...prev, sent],
+    );
     setBody("");
   };
 
@@ -157,6 +182,11 @@ export default function ChatThreadPage() {
 
   const thumb = listing?.listing_images?.[0]?.url ?? null;
   const otherName = other?.name || "Unknown user";
+
+  let lastMineId: string | null = null;
+  for (const m of messages) {
+    if (m.sender_id === userId) lastMineId = m.id;
+  }
 
   return (
     <div className={styles.page}>
@@ -199,9 +229,7 @@ export default function ChatThreadPage() {
             {loading ? (
               <div className={styles.state}>Loading…</div>
             ) : messages.length === 0 ? (
-              <div className={styles.state}>
-                No messages yet. Say hello 👋
-              </div>
+              <div className={styles.state}>No messages yet. Say hello 👋</div>
             ) : (
               messages.map((m) => {
                 const mine = m.sender_id === userId;
@@ -216,6 +244,11 @@ export default function ChatThreadPage() {
                         {formatTime(m.created_at)}
                       </span>
                     </div>
+                    {mine && m.id === lastMineId && (
+                      <span className={styles.status}>
+                        {m.read_at ? "Seen" : "Sent"}
+                      </span>
+                    )}
                   </div>
                 );
               })

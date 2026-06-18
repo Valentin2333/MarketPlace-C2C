@@ -16,12 +16,14 @@ import ScrollToTop from "./components/ScrollToTop/ScrollToTop";
 import FavoritesPage from "./features/favorites/FavoritesPage";
 import MessagesPage from "./features/messages/MessagesPage";
 import ChatThreadPage from "./features/messages/ChatThreadPage";
+import UnreadProvider from "./components/Messages/UnreadProvider";
 
 export default function App() {
   return (
     <BrowserRouter>
-      <ScrollToTop />
-      <Navbar />
+      <UnreadProvider>
+        <ScrollToTop />
+        <Navbar />
       <Routes>
         <Route path="/listings" element={<ListingsPage />} />
         <Route path="/listings/:id" element={<ListingDetailPage />} />
@@ -45,6 +47,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/listings" replace />} />
       </Routes>
       <Footer />
+      </UnreadProvider>
     </BrowserRouter>
   );
 }
