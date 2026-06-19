@@ -14,12 +14,16 @@ import Navbar from "./components/Navbar/Navbar";
 import Footer from "./components/Footer/Footer";
 import ScrollToTop from "./components/ScrollToTop/ScrollToTop";
 import FavoritesPage from "./features/favorites/FavoritesPage";
+import MessagesPage from "./features/messages/MessagesPage";
+import ChatThreadPage from "./features/messages/ChatThreadPage";
+import UnreadProvider from "./components/Messages/UnreadProvider";
 
 export default function App() {
   return (
     <BrowserRouter>
-      <ScrollToTop />
-      <Navbar />
+      <UnreadProvider>
+        <ScrollToTop />
+        <Navbar />
       <Routes>
         <Route path="/listings" element={<ListingsPage />} />
         <Route path="/listings/:id" element={<ListingDetailPage />} />
@@ -33,11 +37,17 @@ export default function App() {
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/favorites" element={<FavoritesPage />} />
+        <Route path="/messages" element={<MessagesPage />} />
+        <Route
+          path="/messages/:listingId/:otherId"
+          element={<ChatThreadPage />}
+        />
 
         <Route path="/" element={<Navigate to="/listings" replace />} />
         <Route path="*" element={<Navigate to="/listings" replace />} />
       </Routes>
       <Footer />
+      </UnreadProvider>
     </BrowserRouter>
   );
 }
