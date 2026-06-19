@@ -138,6 +138,57 @@ export default function ChatThreadPage() {
   }, [authReady, userId, listingId, otherId, navigate, markThreadRead]);
 
   useEffect(() => {
+    if (!userId || !listingId || !otherId) return;
+
+    const inConvo = (m: Message) =>
+      (m.sender_id === userId && m.receiver_id === otherId) ||
+      (m.sender_id === otherId && m.receiver_id === userId);
+
+    const channel = supabase
+      .channel(`thread:${listingId}:${userId}:${otherId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `listing_id=eq.${listingId}`,
+        },
+        (payload) => {
+          const m = payload.new as Message;
+          if (!inConvo(m)) return;
+          setMessages((prev) =>
+            prev.some((x) => x.id === m.id) ? prev : [...prev, m],
+          );
+          if (m.receiver_id === userId) markThreadRead();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+          filter: `listing_id=eq.${listingId}`,
+        },
+        (payload) => {
+          const m = payload.new as Message;
+          if (!inConvo(m)) return;
+          setMessages((prev) =>
+            prev.map((x) =>
+              x.id === m.id ? { ...x, read_at: m.read_at, body: m.body } : x,
+            ),
+          );
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, listingId, otherId, markThreadRead]);
+
+  useEffect(() => {
     const el = messagesRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, loading]);

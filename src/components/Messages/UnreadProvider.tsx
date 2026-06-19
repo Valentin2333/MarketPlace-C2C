@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
-import { UnreadContext } from "../../components/Messages/unread-context";
-import type { UnreadApi } from "../../components/Messages/unread-context";
+import { UnreadContext } from "./unread-context";
+import type { UnreadApi } from "./unread-context";
 
 type UnreadRow = {
   listing_id: string;
@@ -62,6 +62,38 @@ export default function UnreadProvider({ children }: { children: ReactNode }) {
     });
     return () => subscription.unsubscribe();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase
+      .channel(`unread:${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `receiver_id=eq.${userId}`,
+        },
+        () => refresh(),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+          filter: `receiver_id=eq.${userId}`,
+        },
+        () => refresh(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, refresh]);
 
   const markConversationRead = useCallback(
     (listingId: string, otherId: string) => {

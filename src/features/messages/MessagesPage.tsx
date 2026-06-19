@@ -40,6 +40,7 @@ type Conversation = {
 
 export default function MessagesPage() {
   const navigate = useNavigate();
+  const [userId, setUserId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -119,6 +120,7 @@ export default function MessagesPage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!active) return;
       const uid = user?.id ?? null;
+      setUserId(uid);
       if (uid) load(uid);
       else navigate("/login");
     });
@@ -126,6 +128,38 @@ export default function MessagesPage() {
       active = false;
     };
   }, [navigate, load]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase
+      .channel(`inbox:${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "messages",
+          filter: `receiver_id=eq.${userId}`,
+        },
+        () => load(userId),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "messages",
+          filter: `sender_id=eq.${userId}`,
+        },
+        () => load(userId),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, load]);
 
   if (loading) {
     return (
