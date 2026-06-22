@@ -50,6 +50,7 @@ export default function ListingDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -87,9 +88,19 @@ export default function ListingDetailPage() {
   }, [load]);
 
   useEffect(() => {
-    supabase.auth
-      .getUser()
-      .then(({ data: { user } }) => setCurrentUserId(user?.id ?? null));
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      setCurrentUserId(user?.id ?? null);
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+      const { data } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+      setIsAdmin(data?.role === "admin");
+    });
   }, []);
 
   const confirmDelete = async () => {
@@ -101,23 +112,23 @@ export default function ListingDetailPage() {
       .map((img) => pathFromUrl(img.url))
       .filter((p): p is string => !!p);
 
-    if (paths.length > 0) {
-      await supabase.storage.from(BUCKET).remove(paths);
-    }
-    await supabase.from("listing_images").delete().eq("listing_id", listing.id);
     const { error } = await supabase
       .from("listings")
       .delete()
       .eq("id", listing.id);
 
-    setDeleting(false);
-
     if (error) {
+      setDeleting(false);
       setConfirmOpen(false);
       toast.error(error.message);
       return;
     }
 
+    if (paths.length > 0) {
+      await supabase.storage.from(BUCKET).remove(paths);
+    }
+
+    setDeleting(false);
     clearListingsCache();
     toast.success("Listing deleted.");
     navigate("/listings");
@@ -149,6 +160,7 @@ export default function ListingDetailPage() {
   const hasImages = images.length > 0;
   const seller = listing.profiles;
   const isOwner = !!currentUserId && seller?.id === currentUserId;
+  const canDelete = isOwner || isAdmin;
 
   return (
     <div className={styles.page}>
@@ -225,15 +237,17 @@ export default function ListingDetailPage() {
               {listing.created_at && ` · ${formatDate(listing.created_at)}`}
             </p>
 
-            {isOwner && (
+            {canDelete && (
               <div className={styles.ownerActions}>
-                <button
-                  type="button"
-                  className={styles.editBtn}
-                  onClick={() => setEditOpen(true)}
-                >
-                  Edit
-                </button>
+                {isOwner && (
+                  <button
+                    type="button"
+                    className={styles.editBtn}
+                    onClick={() => setEditOpen(true)}
+                  >
+                    Edit
+                  </button>
+                )}
                 <button
                   type="button"
                   className={styles.deleteBtn}
@@ -276,6 +290,7 @@ export default function ListingDetailPage() {
             ) : (
               <p className={styles.meta}>Unknown seller</p>
             )}
+
             {seller && !isOwner && (
               <button
                 type="button"
@@ -307,7 +322,7 @@ export default function ListingDetailPage() {
         />
       )}
 
-      {isOwner && (
+      {canDelete && (
         <ConfirmModal
           open={confirmOpen}
           title="Delete listing"

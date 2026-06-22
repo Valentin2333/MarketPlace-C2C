@@ -17,6 +17,7 @@ import FavoritesPage from "./features/favorites/FavoritesPage";
 import MessagesPage from "./features/messages/MessagesPage";
 import ChatThreadPage from "./features/messages/ChatThreadPage";
 import UnreadProvider from "./components/Messages/UnreadProvider";
+import AdminPanel from "./features/admin/AdminPanel";
 
 export default function App() {
   return (
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/favorites" element={<FavoritesPage />} />
+        <Route path="/admin" element={<AdminPanel />} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route
           path="/messages/:listingId/:otherId"
