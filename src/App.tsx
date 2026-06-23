@@ -18,11 +18,13 @@ import MessagesPage from "./features/messages/MessagesPage";
 import ChatThreadPage from "./features/messages/ChatThreadPage";
 import UnreadProvider from "./components/Messages/UnreadProvider";
 import AdminPanel from "./features/admin/AdminPanel";
+import BanGate from "./components/BanGate/BanGate";
 
 export default function App() {
   return (
     <BrowserRouter>
       <UnreadProvider>
+        <BanGate>
         <ScrollToTop />
         <Navbar />
       <Routes>
@@ -49,6 +51,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/listings" replace />} />
       </Routes>
       <Footer />
+        </BanGate>
       </UnreadProvider>
     </BrowserRouter>
   );
