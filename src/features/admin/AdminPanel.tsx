@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useToast } from "../../components/Toast/useToast";
 import styles from "./AdminPanel.module.css";
@@ -10,16 +10,28 @@ type UserLite = {
   role: string | null;
 };
 
+const PAGE_SIZE = 10;
+
 export default function AdminPanel() {
   const navigate = useNavigate();
   const toast = useToast();
 
   const [ready, setReady] = useState(false);
-  const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<UserLite[]>([]);
-  const [selected, setSelected] = useState<UserLite | null>(null);
-  const [noResults, setNoResults] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [currentUid, setCurrentUid] = useState<string | null>(null);
+
+  const [users, setUsers] = useState<UserLite[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const offsetRef = useRef(0);
+  const loadingRef = useRef(false);
+  const hasMoreRef = useRef(true);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const [search, setSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<UserLite[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  const isSearching = search.trim().length >= 2;
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -36,79 +48,111 @@ export default function AdminPanel() {
         navigate("/listings");
         return;
       }
+      setCurrentUid(user.id);
       setReady(true);
     });
   }, [navigate]);
 
+  const loadUsers = useCallback(async () => {
+    if (loadingRef.current || !hasMoreRef.current) return;
+    loadingRef.current = true;
+    setLoadingUsers(true);
+
+    const { data } = await supabase.rpc("admin_list_users", {
+      p_limit: PAGE_SIZE,
+      p_offset: offsetRef.current,
+    });
+    const rows = (data ?? []) as UserLite[];
+
+    setUsers((prev) => [...prev, ...rows]);
+    offsetRef.current += rows.length;
+    hasMoreRef.current = rows.length === PAGE_SIZE;
+    setHasMore(hasMoreRef.current);
+
+    setLoadingUsers(false);
+    loadingRef.current = false;
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    loadUsers();
+
+    const el = sentinelRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) loadUsers();
+      },
+      { rootMargin: "120px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ready, loadUsers]);
+
   useEffect(() => {
     const timer = setTimeout(async () => {
-      const q = query.trim();
-      if (q.length < 2 || (selected && selected.email === q)) {
-        setSuggestions([]);
-        setNoResults(false);
+      const q = search.trim();
+      if (q.length < 2) {
+        setSearchResults([]);
+        setSearchLoading(false);
         return;
       }
 
       const { data } = await supabase.rpc("search_users_by_email", { q });
-      const rows = (data ?? []) as UserLite[];
-      setSuggestions(rows);
-      setNoResults(rows.length === 0);
-    }, 2000);
+      setSearchResults((data ?? []) as UserLite[]);
+      setSearchLoading(false);
+    }, 300);
 
     return () => clearTimeout(timer);
-  }, [query, selected]);
+  }, [search]);
 
-  const pickSuggestion = (user: UserLite) => {
-    setSelected(user);
-    setQuery(user.email);
-    setSuggestions([]);
-  };
-
-  const handleSubmit = async () => {
-    const q = query.trim();
-    if (!q || submitting) return;
-
-    setSubmitting(true);
-
-    let target = selected;
-
-    if (!target || target.email !== q) {
-      const { data } = await supabase.rpc("search_users_by_email", { q });
-      const rows = (data ?? []) as UserLite[];
-      const exact = rows.filter(
-        (r) => r.email.toLowerCase() === q.toLowerCase(),
-      );
-
-      if (exact.length === 0) {
-        setSubmitting(false);
-        toast.error(`No user found with email “${q}”.`);
-        return;
-      }
-      target = exact[0];
-    }
-
-    if (target.role === "admin") {
-      setSubmitting(false);
-      toast.info(`${target.email} is already an admin.`);
-      return;
-    }
-
+  const toggleBan = async (user: UserLite) => {
+    const newRole = user.role === "banned" ? null : "banned";
     const { error } = await supabase
       .from("profiles")
-      .update({ role: "admin" })
-      .eq("id", target.id);
-
-    setSubmitting(false);
+      .update({ role: newRole })
+      .eq("id", user.id);
 
     if (error) {
       toast.error(error.message);
       return;
     }
 
-    toast.success(`${target.email} is now an admin.`);
-    setQuery("");
-    setSelected(null);
-    setSuggestions([]);
+    const apply = (list: UserLite[]) =>
+      list.map((u) => (u.id === user.id ? { ...u, role: newRole } : u));
+    setUsers(apply);
+    setSearchResults(apply);
+
+    toast.success(
+      newRole === "banned"
+        ? `${user.email} has been banned.`
+        : `${user.email} has been unbanned.`,
+    );
+  };
+
+  const renderRow = (u: UserLite) => {
+    const banned = u.role === "banned";
+    const admin = u.role === "admin";
+    const isSelf = u.id === currentUid;
+    return (
+      <div key={u.id} className={styles.userRow}>
+        <Link to={`/profile/${u.id}`} className={styles.userEmail}>
+          {u.email}
+        </Link>
+        {admin && <span className={styles.adminTag}>admin</span>}
+        {banned && <span className={styles.bannedTag}>banned</span>}
+        {!admin && !isSelf && (
+          <button
+            type="button"
+            className={banned ? styles.unbanRowBtn : styles.banRowBtn}
+            onClick={() => toggleBan(u)}
+          >
+            {banned ? "Unban" : "Ban"}
+          </button>
+        )}
+      </div>
+    );
   };
 
   if (!ready) {
@@ -123,61 +167,43 @@ export default function AdminPanel() {
     <div className={styles.page}>
       <div className={styles.container}>
         <h1 className={styles.heading}>Admin Panel</h1>
-        <p className={styles.subheading}>Promote a user to admin by their email.</p>
+        <p className={styles.subheading}>Manage users.</p>
 
-        <div className={styles.card}>
-          <label className={styles.label} htmlFor="admin-email">
-            Email
-          </label>
+        <h2 className={styles.sectionHeading}>All users</h2>
 
-          <div className={styles.searchWrap}>
-            <input
-              id="admin-email"
-              className={styles.input}
-              type="text"
-              placeholder="Start typing an email…"
-              value={query}
-              autoComplete="off"
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setSelected(null);
-                setNoResults(false);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSubmit();
-              }}
-            />
+        <div className={styles.userSearch}>
+          <input
+            className={styles.input}
+            type="text"
+            placeholder="Search users by email…"
+            value={search}
+            autoComplete="off"
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setSearchLoading(e.target.value.trim().length >= 2);
+            }}
+          />
+        </div>
 
-            {noResults && <div className={styles.hint}>No users found.</div>}
-
-            {suggestions.length > 0 && (
-              <ul className={styles.suggestions}>
-                {suggestions.map((s) => (
-                  <li key={s.id}>
-                    <button
-                      type="button"
-                      className={styles.suggestion}
-                      onClick={() => pickSuggestion(s)}
-                    >
-                      <span className={styles.suggestionName}>{s.email}</span>
-                      {s.role === "admin" && (
-                        <span className={styles.adminTag}>admin</span>
-                      )}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <button
-            type="button"
-            className={styles.submit}
-            onClick={handleSubmit}
-            disabled={submitting || !query.trim()}
-          >
-            {submitting ? "Making admin…" : "Make admin"}
-          </button>
+        <div className={styles.userList}>
+          {isSearching ? (
+            <>
+              {searchResults.map(renderRow)}
+              {searchLoading && <div className={styles.hint}>Searching…</div>}
+              {!searchLoading && searchResults.length === 0 && (
+                <div className={styles.hint}>No users found.</div>
+              )}
+            </>
+          ) : (
+            <>
+              {users.map(renderRow)}
+              {loadingUsers && <div className={styles.hint}>Loading…</div>}
+              {!hasMore && users.length > 0 && (
+                <div className={styles.hint}>No more users.</div>
+              )}
+              <div ref={sentinelRef} />
+            </>
+          )}
         </div>
       </div>
     </div>
