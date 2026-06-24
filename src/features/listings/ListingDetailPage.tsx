@@ -6,6 +6,7 @@ import { clearListingsCache } from "./useListings";
 import { useToast } from "../../components/Toast/useToast";
 import EditListingModal from "./EditListingModal";
 import ConfirmModal from "./ConfirmModal";
+import ReportListingModal from "./ReportListingModal";
 import FavoriteButton from "../../components/Favorites/FavoriteButton";
 
 import styles from "./ListingDetailPage.module.css";
@@ -54,6 +55,8 @@ export default function ListingDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reporting, setReporting] = useState(false);
 
   const reqIdRef = useRef(0);
 
@@ -161,6 +164,31 @@ export default function ListingDetailPage() {
   const seller = listing.profiles;
   const isOwner = !!currentUserId && seller?.id === currentUserId;
   const canDelete = isOwner || isAdmin;
+
+  const handleReport = async (reason: string) => {
+    if (!listing || !currentUserId) return;
+    setReporting(true);
+
+    const { error } = await supabase.from("reports").insert({
+      listing_id: listing.id,
+      reporter_id: currentUserId,
+      reason,
+    });
+
+    setReporting(false);
+    setReportOpen(false);
+
+    if (error) {
+      if (error.code === "23505") {
+        toast.info("You’ve already reported this listing.");
+        return;
+      }
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Thanks - we’ll review this listing.");
+  };
 
   return (
     <div className={styles.page}>
@@ -306,6 +334,22 @@ export default function ListingDetailPage() {
                 💬 Message seller
               </button>
             )}
+
+            {!isOwner && (
+              <button
+                type="button"
+                className={styles.reportBtn}
+                onClick={() => {
+                  if (currentUserId) {
+                    setReportOpen(true);
+                  } else {
+                    navigate("/login");
+                  }
+                }}
+              >
+                🚩 Report listing
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -332,6 +376,15 @@ export default function ListingDetailPage() {
           loading={deleting}
           onConfirm={confirmDelete}
           onClose={() => setConfirmOpen(false)}
+        />
+      )}
+
+      {!isOwner && (
+        <ReportListingModal
+          open={reportOpen}
+          loading={reporting}
+          onSubmit={handleReport}
+          onClose={() => setReportOpen(false)}
         />
       )}
     </div>
