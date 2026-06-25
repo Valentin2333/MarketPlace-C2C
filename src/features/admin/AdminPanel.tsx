@@ -10,7 +10,15 @@ type UserLite = {
   role: string | null;
 };
 
+type ReportedListing = {
+  listing_id: string;
+  title: string | null;
+  report_count: number;
+};
+
 const PAGE_SIZE = 10;
+
+type Tab = "users" | "reports";
 
 export default function AdminPanel() {
   const navigate = useNavigate();
@@ -18,6 +26,7 @@ export default function AdminPanel() {
 
   const [ready, setReady] = useState(false);
   const [currentUid, setCurrentUid] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("users");
 
   const [users, setUsers] = useState<UserLite[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -30,6 +39,9 @@ export default function AdminPanel() {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<UserLite[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+
+  const [reports, setReports] = useState<ReportedListing[]>([]);
+  const [loadingReports, setLoadingReports] = useState(true);
 
   const isSearching = search.trim().length >= 2;
 
@@ -74,7 +86,7 @@ export default function AdminPanel() {
   }, []);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || tab !== "users") return;
     loadUsers();
 
     const el = sentinelRef.current;
@@ -88,7 +100,20 @@ export default function AdminPanel() {
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [ready, loadUsers]);
+  }, [ready, tab, loadUsers]);
+
+  useEffect(() => {
+    if (!ready) return;
+    let active = true;
+    supabase.rpc("admin_list_reported_listings").then(({ data }) => {
+      if (!active) return;
+      setReports((data ?? []) as ReportedListing[]);
+      setLoadingReports(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [ready]);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -167,44 +192,92 @@ export default function AdminPanel() {
     <div className={styles.page}>
       <div className={styles.container}>
         <h1 className={styles.heading}>Admin Panel</h1>
-        <p className={styles.subheading}>Manage users.</p>
 
-        <h2 className={styles.sectionHeading}>All users</h2>
-
-        <div className={styles.userSearch}>
-          <input
-            className={styles.input}
-            type="text"
-            placeholder="Search users by email…"
-            value={search}
-            autoComplete="off"
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setSearchLoading(e.target.value.trim().length >= 2);
-            }}
-          />
+        <div className={styles.tabs}>
+          <button
+            type="button"
+            className={`${styles.tab} ${tab === "users" ? styles.tabActive : ""}`}
+            onClick={() => setTab("users")}
+          >
+            Users
+          </button>
+          <button
+            type="button"
+            className={`${styles.tab} ${tab === "reports" ? styles.tabActive : ""}`}
+            onClick={() => setTab("reports")}
+          >
+            Reported listings
+            {reports.length > 0 && (
+              <span className={styles.tabBadge}>{reports.length}</span>
+            )}
+          </button>
         </div>
 
-        <div className={styles.userList}>
-          {isSearching ? (
-            <>
-              {searchResults.map(renderRow)}
-              {searchLoading && <div className={styles.hint}>Searching…</div>}
-              {!searchLoading && searchResults.length === 0 && (
-                <div className={styles.hint}>No users found.</div>
+        {tab === "users" ? (
+          <>
+            <div className={styles.userSearch}>
+              <input
+                className={styles.input}
+                type="text"
+                placeholder="Search users by email…"
+                value={search}
+                autoComplete="off"
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setSearchLoading(e.target.value.trim().length >= 2);
+                }}
+              />
+            </div>
+
+            <div className={styles.userList}>
+              {isSearching ? (
+                <>
+                  {searchResults.map(renderRow)}
+                  {searchLoading && (
+                    <div className={styles.hint}>Searching…</div>
+                  )}
+                  {!searchLoading && searchResults.length === 0 && (
+                    <div className={styles.hint}>No users found.</div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {users.map(renderRow)}
+                  {loadingUsers && <div className={styles.hint}>Loading…</div>}
+                  {!hasMore && users.length > 0 && (
+                    <div className={styles.hint}>No more users.</div>
+                  )}
+                  <div ref={sentinelRef} />
+                </>
               )}
-            </>
-          ) : (
-            <>
-              {users.map(renderRow)}
-              {loadingUsers && <div className={styles.hint}>Loading…</div>}
-              {!hasMore && users.length > 0 && (
-                <div className={styles.hint}>No more users.</div>
-              )}
-              <div ref={sentinelRef} />
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        ) : (
+          <div className={styles.reportList}>
+            {loadingReports ? (
+              <div className={styles.hint}>Loading…</div>
+            ) : reports.length === 0 ? (
+              <div className={styles.hint}>No reported listings.</div>
+            ) : (
+              reports.map((r) => (
+                <button
+                  key={r.listing_id}
+                  type="button"
+                  className={styles.reportRow}
+                  onClick={() => navigate(`/admin/reports/${r.listing_id}`)}
+                >
+                  <span className={styles.reportTitle}>
+                    {r.title || "Untitled listing"}
+                  </span>
+                  <span className={styles.reportCount}>
+                    {r.report_count}
+                    {r.report_count === 1 ? " report" : " reports"}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
