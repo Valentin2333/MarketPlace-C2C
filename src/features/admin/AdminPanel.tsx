@@ -1,19 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useToast } from "../../components/Toast/useToast";
+import { useReports } from "../../components/Reports/useReports";
+import ConfirmModal from "../listings/ConfirmModal";
 import styles from "./AdminPanel.module.css";
 
 type UserLite = {
   id: string;
   email: string;
   role: string | null;
-};
-
-type ReportedListing = {
-  listing_id: string;
-  title: string | null;
-  report_count: number;
 };
 
 const PAGE_SIZE = 10;
@@ -26,7 +22,11 @@ export default function AdminPanel() {
 
   const [ready, setReady] = useState(false);
   const [currentUid, setCurrentUid] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("users");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab: Tab = searchParams.get("tab") === "users" ? "users" : "reports";
+  const setTab = (next: Tab) => {
+    setSearchParams(next === "users" ? { tab: "users" } : {});
+  };
 
   const [users, setUsers] = useState<UserLite[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -40,10 +40,34 @@ export default function AdminPanel() {
   const [searchResults, setSearchResults] = useState<UserLite[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
 
-  const [reports, setReports] = useState<ReportedListing[]>([]);
-  const [loadingReports, setLoadingReports] = useState(true);
+  const { reports, unseenCount, ready: reportsReady, refresh } = useReports();
+
+  const [confirmListingId, setConfirmListingId] = useState<string | null>(null);
+  const [deletingReports, setDeletingReports] = useState(false);
 
   const isSearching = search.trim().length >= 2;
+
+  const handleDeleteReports = async () => {
+    if (!confirmListingId) return;
+    setDeletingReports(true);
+
+    const { error } = await supabase
+      .from("reports")
+      .update({ dismissed: true })
+      .eq("listing_id", confirmListingId)
+      .eq("dismissed", false);
+
+    setDeletingReports(false);
+    setConfirmListingId(null);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    await refresh();
+    toast.success("Reports deleted.");
+  };
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -101,19 +125,6 @@ export default function AdminPanel() {
     observer.observe(el);
     return () => observer.disconnect();
   }, [ready, tab, loadUsers]);
-
-  useEffect(() => {
-    if (!ready) return;
-    let active = true;
-    supabase.rpc("admin_list_reported_listings").then(({ data }) => {
-      if (!active) return;
-      setReports((data ?? []) as ReportedListing[]);
-      setLoadingReports(false);
-    });
-    return () => {
-      active = false;
-    };
-  }, [ready]);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -196,20 +207,20 @@ export default function AdminPanel() {
         <div className={styles.tabs}>
           <button
             type="button"
-            className={`${styles.tab} ${tab === "users" ? styles.tabActive : ""}`}
-            onClick={() => setTab("users")}
-          >
-            Users
-          </button>
-          <button
-            type="button"
             className={`${styles.tab} ${tab === "reports" ? styles.tabActive : ""}`}
             onClick={() => setTab("reports")}
           >
             Reported listings
-            {reports.length > 0 && (
-              <span className={styles.tabBadge}>{reports.length}</span>
+            {unseenCount > 0 && (
+              <span className={styles.tabBadge}>{unseenCount}</span>
             )}
+          </button>
+          <button
+            type="button"
+            className={`${styles.tab} ${tab === "users" ? styles.tabActive : ""}`}
+            onClick={() => setTab("users")}
+          >
+            Users
           </button>
         </div>
 
@@ -254,31 +265,54 @@ export default function AdminPanel() {
           </>
         ) : (
           <div className={styles.reportList}>
-            {loadingReports ? (
+            {!reportsReady ? (
               <div className={styles.hint}>Loading…</div>
             ) : reports.length === 0 ? (
               <div className={styles.hint}>No reported listings.</div>
             ) : (
               reports.map((r) => (
-                <button
-                  key={r.listing_id}
-                  type="button"
-                  className={styles.reportRow}
-                  onClick={() => navigate(`/admin/reports/${r.listing_id}`)}
-                >
-                  <span className={styles.reportTitle}>
-                    {r.title || "Untitled listing"}
-                  </span>
-                  <span className={styles.reportCount}>
-                    {r.report_count}
-                    {r.report_count === 1 ? " report" : " reports"}
-                  </span>
-                </button>
+                <div key={r.listingId} className={styles.reportRow}>
+                  <button
+                    type="button"
+                    className={styles.reportMain}
+                    onClick={() => navigate(`/admin/reports/${r.listingId}`)}
+                  >
+                    {r.unseenCount > 0 && <span className={styles.unseenDot} />}
+                    <span className={styles.reportTitle}>
+                      {r.listingTitle || "Untitled listing"}
+                    </span>
+                  </button>
+                  <div className={styles.reportMeta}>
+                    <span className={styles.reportCount}>
+                      {r.count}
+                      {r.count === 1 ? " report" : " reports"}
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.deleteReportBtn}
+                      onClick={() => setConfirmListingId(r.listingId)}
+                      aria-label="Delete report"
+                    >
+                      Delete report
+                    </button>
+                  </div>
+                </div>
               ))
             )}
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        open={confirmListingId !== null}
+        title="Delete reports"
+        message="Delete all reports for this listing? The users who reported it won't be able to report it again."
+        confirmLabel="Delete"
+        loadingLabel="Deleting…"
+        loading={deletingReports}
+        onConfirm={handleDeleteReports}
+        onClose={() => setConfirmListingId(null)}
+      />
     </div>
   );
 }
