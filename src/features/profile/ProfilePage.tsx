@@ -3,6 +3,7 @@ import type { ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import { useToast } from "../../components/Toast/useToast";
 import styles from "./ProfilePage.module.css";
 
 type Profile = {
@@ -21,9 +22,12 @@ type ProfileFormData = {
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [banning, setBanning] = useState(false);
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,9 +53,19 @@ export default function ProfilePage() {
   const isOwner = !!currentUserId && currentUserId === id;
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       setCurrentUserId(user?.id ?? null);
       setCurrentUserEmail(user?.email ?? null);
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+      const { data } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+      setIsAdmin(data?.role === "admin");
     });
   }, []);
 
@@ -194,6 +208,35 @@ export default function ProfilePage() {
     navigate("/");
   };
 
+  const canBan =
+    isAdmin && !isOwner && !!profile && profile.role !== "admin";
+
+  const toggleBan = async () => {
+    if (!canBan || !id || !profile) return;
+    setBanning(true);
+
+    const newRole = profile.role === "banned" ? null : "banned";
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ role: newRole })
+      .eq("id", id);
+
+    setBanning(false);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    setProfile((prev) => (prev ? { ...prev, role: newRole } : prev));
+    toast.success(
+      newRole === "banned"
+        ? `${profile.name || "User"} has been banned.`
+        : `${profile.name || "User"} has been unbanned.`,
+    );
+  };
+
   const initials = (profile?.name ?? "?")
     .split(" ")
     .map((w) => w[0])
@@ -268,6 +311,9 @@ export default function ProfilePage() {
               </p>
               {profile.role === "admin" && (
                 <span className={styles.badge}>Admin</span>
+              )}
+              {profile.role === "banned" && (
+                <span className={styles.bannedBadge}>Banned</span>
               )}
             </div>
           </div>
@@ -377,6 +423,31 @@ export default function ProfilePage() {
                   </span>
                 </div>
               </div>
+
+              {canBan && (
+                <>
+                  <div className={styles.divider} />
+                  <div className={styles.adminActions}>
+                    <h3 className={styles.sectionTitle}>Admin</h3>
+                    <button
+                      type="button"
+                      className={
+                        profile.role === "banned"
+                          ? styles.unbanBtn
+                          : styles.banBtn
+                      }
+                      onClick={toggleBan}
+                      disabled={banning}
+                    >
+                      {banning
+                        ? "…"
+                        : profile.role === "banned"
+                          ? "Unban user"
+                          : "Ban user"}
+                    </button>
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>

@@ -17,11 +17,17 @@ import FavoritesPage from "./features/favorites/FavoritesPage";
 import MessagesPage from "./features/messages/MessagesPage";
 import ChatThreadPage from "./features/messages/ChatThreadPage";
 import UnreadProvider from "./components/Messages/UnreadProvider";
+import ReportsProvider from "./components/Reports/ReportsProvider";
+import AdminPanel from "./features/admin/AdminPanel";
+import ReportDetailsPage from "./features/admin/ReportDetailsPage";
+import BanGate from "./components/BanGate/BanGate";
 
 export default function App() {
   return (
     <BrowserRouter>
       <UnreadProvider>
+        <ReportsProvider>
+        <BanGate>
         <ScrollToTop />
         <Navbar />
       <Routes>
@@ -37,6 +43,11 @@ export default function App() {
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/favorites" element={<FavoritesPage />} />
+        <Route path="/admin" element={<AdminPanel />} />
+        <Route
+          path="/admin/reports/:listingId"
+          element={<ReportDetailsPage />}
+        />
         <Route path="/messages" element={<MessagesPage />} />
         <Route
           path="/messages/:listingId/:otherId"
@@ -47,6 +58,8 @@ export default function App() {
         <Route path="*" element={<Navigate to="/listings" replace />} />
       </Routes>
       <Footer />
+        </BanGate>
+        </ReportsProvider>
       </UnreadProvider>
     </BrowserRouter>
   );
