@@ -1,0 +1,61 @@
+/* ─────────────────────────────────────────
+   THEME TOGGLE — navbar icon button + drawer row
+───────────────────────────────────────── */
+
+/* Compact square button — mirrors .hamburger / .btnLogout weight */
+.iconBtn {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.iconBtn:hover {
+  color: var(--color-primary);
+  border-color: var(--color-border-hover);
+  background-color: var(--color-hover);
+}
+
+/* Full-width labelled row — mirrors .mobileLink */
+.full {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3);
+  font-size: var(--text-base);
+  font-weight: 500;
+  text-align: left;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  border-radius: var(--radius-md);
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.full:hover {
+  color: var(--color-text);
+  background-color: var(--color-hover);
+}
+
+.icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.iconBtn .icon {
+  width: 18px;
+  height: 18px;
+}
