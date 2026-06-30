@@ -394,7 +394,7 @@
 }
 
 .banBtn:hover:not(:disabled) {
-  color: var(--color-on-primary);
+  color: #040d18;
   background: var(--color-danger, #f87171);
 }
 
@@ -405,7 +405,7 @@
 }
 
 .unbanBtn:hover:not(:disabled) {
-  color: var(--color-on-primary);
+  color: #040d18;
   background: var(--color-primary);
 }
 

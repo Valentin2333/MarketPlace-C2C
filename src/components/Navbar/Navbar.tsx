@@ -5,6 +5,7 @@ import type { User } from "@supabase/supabase-js";
 import CreateListingModal from "../../features/listings/CreateListingModal";
 import { useFavorites } from "../Favorites/useFavorites";
 import { useUnread } from "../Messages/useUnread";
+import { useReports } from "../Reports/useReports";
 
 import BrandMark from '../BrandMark/BrandMark'
 import ThemeToggle from "../Theme/ThemeToggle";
@@ -20,6 +21,7 @@ export default function Navbar() {
   const location = useLocation();
   const { favoriteIds } = useFavorites();
   const { unreadCount } = useUnread();
+  const { unseenCount: reportsUnseen } = useReports();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -111,6 +113,9 @@ export default function Navbar() {
                 className={`${styles.navLink} ${styles.adminLink} ${isActive("/admin") ? styles.navLinkActive : ""}`}
               >
                 Admin Panel
+                {reportsUnseen > 0 && (
+                  <span className={styles.favBadge}>{reportsUnseen}</span>
+                )}
               </Link>
             )}
           </div>
@@ -184,6 +189,9 @@ export default function Navbar() {
                 className={`${styles.mobileLink} ${styles.mobileAdminLink}`}
               >
                 Admin Panel
+                {reportsUnseen > 0 && (
+                  <span className={styles.favBadge}>{reportsUnseen}</span>
+                )}
               </Link>
 
               <div className={styles.mobileDivider} />
