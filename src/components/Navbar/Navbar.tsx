@@ -8,6 +8,7 @@ import { useUnread } from "../Messages/useUnread";
 import { useReports } from "../Reports/useReports";
 
 import BrandMark from '../BrandMark/BrandMark'
+import ThemeToggle from "../Theme/ThemeToggle";
 import styles from "./Navbar.module.css";
 
 type Profile = {
@@ -120,6 +121,7 @@ export default function Navbar() {
           </div>
 
           <div className={styles.actions}>
+            <ThemeToggle variant="icon" />
             {user ? (
               <>
                 <Link
@@ -233,6 +235,9 @@ export default function Navbar() {
               </Link>
             </>
           )}
+
+          <div className={styles.mobileDivider} />
+          <ThemeToggle variant="full" />
         </div>
       )}
 

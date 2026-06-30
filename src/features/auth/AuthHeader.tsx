@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import BrandMark from "../../components/BrandMark/BrandMark";
 import styles from "./AuthHeader.module.css";
 
 type AuthHeaderProps = {
@@ -10,7 +11,7 @@ export default function AuthHeader({ title, subtitle }: AuthHeaderProps) {
   return (
     <div className={styles.header}>
       <Link to="/" className={styles.logo}>
-        <div className={styles.logoIcon}>🛒</div>
+        <BrandMark className={styles.logoIcon} />
         MarketPlace
       </Link>
       <h1 className={styles.title}>{title}</h1>

@@ -5,7 +5,7 @@
   top: 0;
   z-index: 100;
   height: var(--navbar-height);
-  background: rgba(8, 12, 18, 0.75);
+  background: var(--color-nav-bg);
   border-bottom: 1px solid var(--color-border);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -42,7 +42,7 @@
 .logoIcon {
   width: 30px;
   height: 30px;
-  background: linear-gradient(135deg, var(--color-primary), #0ea5e9);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-2));
   border-radius: var(--radius-md);
   display: grid;
   place-items: center;
@@ -71,7 +71,7 @@
 
 .navLink:hover {
   color: var(--color-text);
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--color-hover);
 }
 
 .navLinkActive {
@@ -125,22 +125,22 @@
 
 .btnGhost:hover {
   color: var(--color-text);
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--color-hover);
 }
 
 .btnPrimary {
   padding: var(--space-2) var(--space-4);
   font-size: var(--text-sm);
   font-weight: 600;
-  color: #040d18;
-  background: linear-gradient(135deg, var(--color-primary), #0ea5e9);
+  color: var(--color-on-primary);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-2));
   border-radius: var(--radius-md);
   box-shadow: var(--glow-sm);
   letter-spacing: 0.01em;
 }
 
 .btnPrimary:hover {
-  color: #040d18;
+  color: var(--color-on-primary);
   background: linear-gradient(
     135deg,
     var(--color-primary-hover),
@@ -207,7 +207,7 @@
   right: 0;
   z-index: 99;
   flex-direction: column;
-  background: rgba(8, 12, 18, 0.95);
+  background: var(--color-nav-bg-solid);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--color-border);
@@ -228,7 +228,7 @@
 
 .mobileLink:hover {
   color: var(--color-text);
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--color-hover);
 }
 
 .mobileLinkActive {
@@ -255,8 +255,8 @@
   padding: var(--space-3);
   font-size: var(--text-base);
   font-weight: 600;
-  color: #040d18;
-  background: linear-gradient(135deg, var(--color-primary), #0ea5e9);
+  color: var(--color-on-primary);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-2));
   border-radius: var(--radius-md);
   text-align: center;
   box-shadow: var(--glow-sm);
@@ -266,7 +266,7 @@
 }
 
 .mobileBtnPrimary:hover {
-  color: #040d18;
+  color: var(--color-on-primary);
   background: linear-gradient(
     135deg,
     var(--color-primary-hover),
@@ -332,8 +332,8 @@
 }
 
 .createBtn:hover {
-  color: #040d18;
-  background: linear-gradient(135deg, var(--color-primary), #0ea5e9);
+  color: var(--color-on-primary);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-2));
   border-color: transparent;
   box-shadow: var(--glow-sm);
   transform: translateY(-1px);

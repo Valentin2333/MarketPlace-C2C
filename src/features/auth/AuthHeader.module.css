@@ -22,7 +22,7 @@
 .logoIcon {
   width: 34px;
   height: 34px;
-  background: linear-gradient(135deg, var(--color-primary), #0ea5e9);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-2));
   border-radius: var(--radius-md);
   display: grid;
   place-items: center;
@@ -35,7 +35,7 @@
   font-weight: 700;
   letter-spacing: -0.03em;
   margin-bottom: var(--space-2);
-  background: linear-gradient(135deg, #f0f6fc 30%, var(--color-primary));
+  background: linear-gradient(135deg, var(--color-text) 30%, var(--color-primary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
