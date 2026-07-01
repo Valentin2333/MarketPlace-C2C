@@ -165,3 +165,31 @@
   line-height: 1;
   box-shadow: var(--glow-sm);
 }
+
+/* Per-row chat deletion */
+.deleteRowBtn {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  color: var(--color-text-faint);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.deleteRowBtn:hover {
+  color: var(--color-error);
+  border-color: rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.deleteRowIcon {
+  width: 16px;
+  height: 16px;
+}
