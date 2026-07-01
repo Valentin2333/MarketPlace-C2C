@@ -4,7 +4,12 @@ import { useForm } from "react-hook-form";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useToast } from "../../components/Toast/useToast";
+import ConfirmModal from "../listings/ConfirmModal";
+import { clearListingsCache } from "../listings/useListings";
 import styles from "./ProfilePage.module.css";
+
+const AVATAR_BUCKET = "avatars";
+const LISTING_BUCKET = "listing-images";
 
 type Profile = {
   id: string;
@@ -18,6 +23,12 @@ type ProfileFormData = {
   name: string;
   city: string;
 };
+
+function pathFromListingImageUrl(url: string): string | null {
+  const marker = `/${LISTING_BUCKET}/`;
+  const i = url.indexOf(marker);
+  return i === -1 ? null : url.slice(i + marker.length);
+}
 
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -42,6 +53,9 @@ export default function ProfilePage() {
 
   const [pwSending, setPwSending] = useState(false);
   const [pwMsg, setPwMsg] = useState<string | null>(null);
+
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const {
     register,
@@ -205,6 +219,43 @@ export default function ProfilePage() {
 
   const onLogout = async () => {
     await supabase.auth.signOut();
+    navigate("/");
+  };
+
+  const onDeleteAccount = async () => {
+    if (!isOwner || !id) return;
+    setDeletingAccount(true);
+
+    const { data: ownListings } = await supabase
+      .from("listings")
+      .select("listing_images ( url )")
+      .eq("user_id", id);
+
+    const imagePaths = ((ownListings ?? []) as {
+      listing_images: { url: string }[] | null;
+    }[])
+      .flatMap((l) => l.listing_images ?? [])
+      .map((img) => pathFromListingImageUrl(img.url))
+      .filter((p): p is string => !!p);
+
+    if (imagePaths.length > 0) {
+      await supabase.storage.from(LISTING_BUCKET).remove(imagePaths);
+    }
+
+    await supabase.storage.from(AVATAR_BUCKET).remove([`${id}/avatar`]);
+
+    const { error } = await supabase.rpc("delete_own_account");
+
+    if (error) {
+      setDeletingAccount(false);
+      setDeleteAccountOpen(false);
+      toast.error(error.message);
+      return;
+    }
+
+    clearListingsCache();
+    await supabase.auth.signOut();
+    toast.success("Your account has been deleted.");
     navigate("/");
   };
 
@@ -405,6 +456,23 @@ export default function ProfilePage() {
                   Log out
                 </button>
               </div>
+
+              <div className={styles.divider} />
+
+              <div className={styles.dangerZone}>
+                <h3 className={styles.sectionTitle}>Danger zone</h3>
+                <p className={styles.dangerText}>
+                  Deleting your account permanently removes your profile,
+                  listings, photos and messages. This can’t be undone.
+                </p>
+                <button
+                  type="button"
+                  className={styles.deleteAccountBtn}
+                  onClick={() => setDeleteAccountOpen(true)}
+                >
+                  Delete account
+                </button>
+              </div>
             </>
           ) : (
             <>
@@ -452,6 +520,17 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        open={deleteAccountOpen}
+        title="Delete account"
+        message="This will permanently delete your profile, listings, photos and messages. This can’t be undone."
+        confirmLabel="Delete account"
+        loadingLabel="Deleting…"
+        loading={deletingAccount}
+        onConfirm={onDeleteAccount}
+        onClose={() => setDeleteAccountOpen(false)}
+      />
     </div>
   );
 }
