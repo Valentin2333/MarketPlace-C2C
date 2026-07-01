@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useParams, useNavigationType } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import { useCurrentUser } from "../../lib/useCurrentUser";
 import ListingCard from "../../components/ListingCard/ListingCard";
 import styles from "./UserListingsPage.module.css";
 
@@ -17,13 +18,14 @@ const scrollPositions = new Map<string, number>();
 export default function UserListingsPage() {
   const { id } = useParams<{ id: string }>();
   const navType = useNavigationType();
+  const { userId: currentUserId } = useCurrentUser();
 
   const [listings, setListings] = useState<UserListing[]>([]);
   const [ownerName, setOwnerName] = useState<string | null>(null);
-  const [isOwner, setIsOwner] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const isOwner = !!currentUserId && currentUserId === id;
   const didRestore = useRef(false);
 
   useEffect(() => {
@@ -33,11 +35,6 @@ export default function UserListingsPage() {
     const load = async () => {
       setLoading(true);
       setError(null);
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (active) setIsOwner(!!user && user.id === id);
 
       const { data: profile } = await supabase
         .from("profiles")

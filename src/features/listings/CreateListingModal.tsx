@@ -5,13 +5,11 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { clearListingsCache } from "./useListings";
 import { useToast } from "../../components/Toast/useToast";
+import { LISTING_IMAGES_BUCKET as BUCKET, compressImage } from "./listingImages";
 import styles from "./CreateListingModal.module.css";
 
-const BUCKET = "listing-images";
 const MAX_IMAGES = 5;
 const MAX_SIZE = 15 * 1024 * 1024;
-const MAX_DIM = 1600;
-const QUALITY = 0.8;
 
 type Category = {
   id: number;
@@ -36,49 +34,6 @@ type CreateListingModalProps = {
   open: boolean;
   onClose: () => void;
 };
-
-async function compressImage(
-  file: File,
-): Promise<{ blob: Blob; ext: string; type: string }> {
-  const fallback = () => {
-    const ext = file.name.includes(".")
-      ? (file.name.split(".").pop() as string)
-      : "jpg";
-    return {
-      blob: file as Blob,
-      ext,
-      type: file.type || "application/octet-stream",
-    };
-  };
-
-  let bitmap: ImageBitmap;
-  try {
-    bitmap = await createImageBitmap(file);
-  } catch {
-    return fallback();
-  }
-
-  const scale = Math.min(1, MAX_DIM / Math.max(bitmap.width, bitmap.height));
-  const width = Math.round(bitmap.width * scale);
-  const height = Math.round(bitmap.height * scale);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    bitmap.close();
-    return fallback();
-  }
-  ctx.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
-
-  const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob((b) => resolve(b), "image/jpeg", QUALITY),
-  );
-  if (!blob) return fallback();
-  return { blob, ext: "jpg", type: "image/jpeg" };
-}
 
 export default function CreateListingModal({
   open,
