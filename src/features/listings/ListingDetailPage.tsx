@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import { useCurrentUser } from "../../lib/useCurrentUser";
 import { formatPrice, formatDate } from "../../lib/format";
 import { clearListingsCache } from "./useListings";
 import { useToast } from "../../components/Toast/useToast";
@@ -8,10 +9,12 @@ import EditListingModal from "./EditListingModal";
 import ConfirmModal from "./ConfirmModal";
 import ReportListingModal from "./ReportListingModal";
 import FavoriteButton from "../../components/Favorites/FavoriteButton";
+import {
+  LISTING_IMAGES_BUCKET as BUCKET,
+  pathFromListingImageUrl as pathFromUrl,
+} from "./listingImages";
 
 import styles from "./ListingDetailPage.module.css";
-
-const BUCKET = "listing-images";
 
 type ListingDetail = {
   id: string;
@@ -29,12 +32,6 @@ type ListingDetail = {
   } | null;
 };
 
-function pathFromUrl(url: string): string | null {
-  const marker = `/${BUCKET}/`;
-  const i = url.indexOf(marker);
-  return i === -1 ? null : url.slice(i + marker.length);
-}
-
 export default function ListingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -50,8 +47,7 @@ export default function ListingDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { userId: currentUserId, isAdmin } = useCurrentUser();
   const [editOpen, setEditOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -89,22 +85,6 @@ export default function ListingDetailPage() {
   useEffect(() => {
     load();
   }, [load]);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      setCurrentUserId(user?.id ?? null);
-      if (!user) {
-        setIsAdmin(false);
-        return;
-      }
-      const { data } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle();
-      setIsAdmin(data?.role === "admin");
-    });
-  }, []);
 
   const confirmDelete = async () => {
     if (!listing) return;

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import { useCurrentUser } from "../../lib/useCurrentUser";
 import { useToast } from "../../components/Toast/useToast";
 import { useReports } from "../../components/Reports/useReports";
 import ConfirmModal from "../listings/ConfirmModal";
@@ -20,8 +21,8 @@ export default function AdminPanel() {
   const navigate = useNavigate();
   const toast = useToast();
 
-  const [ready, setReady] = useState(false);
-  const [currentUid, setCurrentUid] = useState<string | null>(null);
+  const { userId: currentUid, isAdmin, ready: authReady } = useCurrentUser();
+  const ready = authReady && isAdmin;
   const [searchParams, setSearchParams] = useSearchParams();
   const tab: Tab = searchParams.get("tab") === "users" ? "users" : "reports";
   const setTab = (next: Tab) => {
@@ -70,24 +71,15 @@ export default function AdminPanel() {
   };
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) {
-        navigate("/login");
-        return;
-      }
-      const { data } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle();
-      if (data?.role !== "admin") {
-        navigate("/listings");
-        return;
-      }
-      setCurrentUid(user.id);
-      setReady(true);
-    });
-  }, [navigate]);
+    if (!authReady) return;
+    if (!currentUid) {
+      navigate("/login");
+      return;
+    }
+    if (!isAdmin) {
+      navigate("/listings");
+    }
+  }, [authReady, currentUid, isAdmin, navigate]);
 
   const loadUsers = useCallback(async () => {
     if (loadingRef.current || !hasMoreRef.current) return;

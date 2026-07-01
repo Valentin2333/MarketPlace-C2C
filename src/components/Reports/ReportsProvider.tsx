@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { supabase } from "../../lib/supabase";
+import { useCurrentUser } from "../../lib/useCurrentUser";
 import { ReportsContext } from "./reports-context";
 import type { GroupedReport, ReportsApi } from "./reports-context";
 
@@ -14,36 +15,16 @@ type Row = {
 };
 
 export default function ReportsProvider({ children }: { children: ReactNode }) {
+  const { isAdmin, ready: authReady } = useCurrentUser();
   const [reports, setReports] = useState<GroupedReport[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [ready, setReady] = useState(false);
 
   const refresh = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    if (!isAdmin) {
       setReports([]);
-      setIsAdmin(false);
       setReady(true);
       return;
     }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (profile?.role !== "admin") {
-      setReports([]);
-      setIsAdmin(false);
-      setReady(true);
-      return;
-    }
-
-    setIsAdmin(true);
 
     const { data } = await supabase.rpc("admin_list_reports");
     const rows = (data ?? []) as Row[];
@@ -59,9 +40,10 @@ export default function ReportsProvider({ children }: { children: ReactNode }) {
       })),
     );
     setReady(true);
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
+    if (!authReady) return;
     let active = true;
     (async () => {
       if (active) await refresh();
@@ -69,16 +51,7 @@ export default function ReportsProvider({ children }: { children: ReactNode }) {
     return () => {
       active = false;
     };
-  }, [refresh]);
-
-  useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      refresh();
-    });
-    return () => subscription.unsubscribe();
-  }, [refresh]);
+  }, [authReady, refresh]);
 
   useEffect(() => {
     if (!isAdmin) return;

@@ -3,13 +3,17 @@ import type { ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import { useCurrentUser } from "../../lib/useCurrentUser";
 import { useToast } from "../../components/Toast/useToast";
 import ConfirmModal from "../listings/ConfirmModal";
 import { clearListingsCache } from "../listings/useListings";
+import {
+  LISTING_IMAGES_BUCKET as LISTING_BUCKET,
+  pathFromListingImageUrl,
+} from "../listings/listingImages";
 import styles from "./ProfilePage.module.css";
 
 const AVATAR_BUCKET = "avatars";
-const LISTING_BUCKET = "listing-images";
 
 type Profile = {
   id: string;
@@ -24,20 +28,16 @@ type ProfileFormData = {
   city: string;
 };
 
-function pathFromListingImageUrl(url: string): string | null {
-  const marker = `/${LISTING_BUCKET}/`;
-  const i = url.indexOf(marker);
-  return i === -1 ? null : url.slice(i + marker.length);
-}
-
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const toast = useToast();
 
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const {
+    userId: currentUserId,
+    email: currentUserEmail,
+    isAdmin,
+  } = useCurrentUser();
   const [banning, setBanning] = useState(false);
 
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -65,23 +65,6 @@ export default function ProfilePage() {
   } = useForm<ProfileFormData>();
 
   const isOwner = !!currentUserId && currentUserId === id;
-
-  useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      setCurrentUserId(user?.id ?? null);
-      setCurrentUserEmail(user?.email ?? null);
-      if (!user) {
-        setIsAdmin(false);
-        return;
-      }
-      const { data } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle();
-      setIsAdmin(data?.role === "admin");
-    });
-  }, []);
 
   useEffect(() => {
     if (!id) return;

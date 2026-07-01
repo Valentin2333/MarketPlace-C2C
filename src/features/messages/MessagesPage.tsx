@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import { useCurrentUser } from "../../lib/useCurrentUser";
 import { formatDate } from "../../lib/format";
 import { useToast } from "../../components/Toast/useToast";
 import { useUnread } from "../../components/Messages/useUnread";
@@ -51,7 +52,7 @@ export default function MessagesPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const { markConversationRead } = useUnread();
-  const [userId, setUserId] = useState<string | null>(null);
+  const { userId, ready: authReady } = useCurrentUser();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null);
@@ -168,18 +169,19 @@ export default function MessagesPage() {
   };
 
   useEffect(() => {
+    if (!authReady) return;
+    if (!userId) {
+      navigate("/login");
+      return;
+    }
     let active = true;
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!active) return;
-      const uid = user?.id ?? null;
-      setUserId(uid);
-      if (uid) load(uid);
-      else navigate("/login");
-    });
+    (async () => {
+      if (active) await load(userId);
+    })();
     return () => {
       active = false;
     };
-  }, [navigate, load]);
+  }, [authReady, userId, navigate, load]);
 
   useEffect(() => {
     if (!userId) return;

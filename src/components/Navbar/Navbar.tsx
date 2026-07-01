@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
-import type { User } from "@supabase/supabase-js";
+import { useCurrentUser } from "../../lib/useCurrentUser";
 import CreateListingModal from "../../features/listings/CreateListingModal";
 import { useFavorites } from "../Favorites/useFavorites";
 import { useUnread } from "../Messages/useUnread";
@@ -11,41 +10,18 @@ import BrandMark from '../BrandMark/BrandMark'
 import ThemeToggle from "../Theme/ThemeToggle";
 import styles from "./Navbar.module.css";
 
-type Profile = {
-  id: string;
-  role: string | null;
-};
-
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { favoriteIds } = useFavorites();
   const { unreadCount } = useUnread();
   const { unseenCount: reportsUnseen } = useReports();
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const { userId, isAdmin } = useCurrentUser();
   const [menuOpen, setMenuOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const hamburgerRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
-      else setProfile(null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -68,21 +44,11 @@ export default function Navbar() {
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [menuOpen]);
 
-  const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("id", userId)
-      .single();
-    setProfile(data);
-  };
-
   const handleCreate = () => {
-    if (user) setCreateOpen(true);
+    if (userId) setCreateOpen(true);
     else navigate("/login");
   };
 
-  const isAdmin = profile?.role === "admin";
   const favCount = favoriteIds.length;
 
   const isActive = (path: string) =>
@@ -122,7 +88,7 @@ export default function Navbar() {
 
           <div className={styles.actions}>
             <ThemeToggle variant="icon" />
-            {user ? (
+            {userId ? (
               <>
                 <Link
                   to="/favorites"
@@ -143,7 +109,7 @@ export default function Navbar() {
                   )}
                 </Link>
                 <Link
-                  to={`/profile/${user.id}`}
+                  to={`/profile/${userId}`}
                   className={`${styles.navLink} ${isActive("/profile") ? styles.navLinkActive : ""}`}
                 >
                   Profile
@@ -198,7 +164,7 @@ export default function Navbar() {
             </>
           )}
 
-          {user ? (
+          {userId ? (
             <>
               <Link
                 to="/favorites"
@@ -219,7 +185,7 @@ export default function Navbar() {
                 )}
               </Link>
               <Link
-                to={`/profile/${user.id}`}
+                to={`/profile/${userId}`}
                 className={`${styles.mobileLink} ${isActive("/profile") ? styles.mobileLinkActive : ""}`}
               >
                 Profile

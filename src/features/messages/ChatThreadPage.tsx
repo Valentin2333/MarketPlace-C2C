@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import { useCurrentUser } from "../../lib/useCurrentUser";
 import { useToast } from "../../components/Toast/useToast";
 import { useUnread } from "../../components/Messages/useUnread";
 import ConfirmModal from "../listings/ConfirmModal";
@@ -50,8 +51,7 @@ export default function ChatThreadPage() {
   const toast = useToast();
   const { markConversationRead } = useUnread();
 
-  const [userId, setUserId] = useState<string | null>(null);
-  const [authReady, setAuthReady] = useState(false);
+  const { userId, ready: authReady } = useCurrentUser();
   const [messages, setMessages] = useState<Message[]>([]);
   const [other, setOther] = useState<ProfileLite | null>(null);
   const [listing, setListing] = useState<ListingLite | null>(null);
@@ -74,13 +74,6 @@ export default function ChatThreadPage() {
       .is("read_at", null);
     markConversationRead(listingId, otherId);
   }, [userId, listingId, otherId, markConversationRead]);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUserId(user?.id ?? null);
-      setAuthReady(true);
-    });
-  }, []);
 
   useEffect(() => {
     if (!authReady) return;

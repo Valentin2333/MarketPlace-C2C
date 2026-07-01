@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import { useCurrentUser } from "../../lib/useCurrentUser";
 import { useReports } from "../../components/Reports/useReports";
 import styles from "./ReportDetailsPage.module.css";
 
@@ -42,37 +43,28 @@ export default function ReportDetailsPage() {
   const { listingId } = useParams<{ listingId: string }>();
   const navigate = useNavigate();
   const { markListingSeen } = useReports();
+  const { userId, isAdmin, ready: authReady } = useCurrentUser();
 
-  const [ready, setReady] = useState(false);
   const [listing, setListing] = useState<ListingLite | null>(null);
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!authReady) return;
+    if (!userId) {
+      navigate("/login");
+      return;
+    }
+    if (!isAdmin) {
+      navigate("/listings");
+    }
+  }, [authReady, userId, isAdmin, navigate]);
+
+  useEffect(() => {
+    if (!authReady || !isAdmin || !listingId) return;
     let active = true;
 
     (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        navigate("/login");
-        return;
-      }
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle();
-      if (profile?.role !== "admin") {
-        navigate("/listings");
-        return;
-      }
-      if (!active) return;
-      setReady(true);
-
-      if (!listingId) return;
-
       const [{ data: list }, { data: reps }] = await Promise.all([
         supabase
           .from("listings")
@@ -95,9 +87,9 @@ export default function ReportDetailsPage() {
     return () => {
       active = false;
     };
-  }, [listingId, navigate, markListingSeen]);
+  }, [authReady, isAdmin, listingId, markListingSeen]);
 
-  if (!ready) {
+  if (!authReady || !isAdmin) {
     return (
       <div className={styles.page}>
         <div className={styles.state}>Loading…</div>
