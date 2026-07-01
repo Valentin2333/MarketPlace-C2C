@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useToast } from "../../components/Toast/useToast";
 import { useUnread } from "../../components/Messages/useUnread";
+import ConfirmModal from "../listings/ConfirmModal";
 import styles from "./ChatThreadPage.module.css";
 
 type Message = {
@@ -57,6 +58,8 @@ export default function ChatThreadPage() {
   const [loading, setLoading] = useState(true);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletingChat, setDeletingChat] = useState(false);
 
   const messagesRef = useRef<HTMLDivElement>(null);
 
@@ -96,7 +99,7 @@ export default function ChatThreadPage() {
     const load = async () => {
       setLoading(true);
 
-      const [{ data: msgs }, { data: profile }, { data: list }] =
+      const [{ data: msgs }, { data: profile }, { data: list }, { data: mark }] =
         await Promise.all([
           supabase
             .from("messages")
@@ -116,11 +119,21 @@ export default function ChatThreadPage() {
             .select("id, title, listing_images ( url )")
             .eq("id", listingId)
             .maybeSingle(),
+          supabase
+            .from("chat_deletes")
+            .select("deleted_at")
+            .eq("listing_id", listingId)
+            .eq("user_id", userId)
+            .eq("other_id", otherId)
+            .maybeSingle(),
         ]);
 
       if (!active) return;
 
-      const loaded = (msgs ?? []) as Message[];
+      const deletedAt = (mark as { deleted_at: string } | null)?.deleted_at ?? null;
+      const loaded = ((msgs ?? []) as Message[]).filter(
+        (m) => !deletedAt || (m.created_at !== null && m.created_at > deletedAt),
+      );
       setMessages(loaded);
       setOther((profile ?? null) as ProfileLite | null);
       setListing((list ?? null) as ListingLite | null);
@@ -231,6 +244,28 @@ export default function ChatThreadPage() {
     }
   };
 
+  const handleDeleteChat = async () => {
+    if (!listingId || !otherId) return;
+    setDeletingChat(true);
+
+    const { error } = await supabase.rpc("delete_chat", {
+      p_listing_id: listingId,
+      p_other_id: otherId,
+    });
+
+    setDeletingChat(false);
+    setDeleteOpen(false);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    markConversationRead(listingId, otherId);
+    toast.success("Chat deleted.");
+    navigate("/messages");
+  };
+
   const thumb = listing?.listing_images?.[0]?.url ?? null;
   const otherName = other?.name || "Unknown user";
 
@@ -274,6 +309,25 @@ export default function ChatThreadPage() {
                 <span className={styles.headerTitle}>{listing.title}</span>
               </Link>
             )}
+
+            <button
+              type="button"
+              className={styles.deleteChatBtn}
+              onClick={() => setDeleteOpen(true)}
+              aria-label="Delete chat"
+              title="Delete chat"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className={styles.deleteChatIcon}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13" />
+              </svg>
+            </button>
           </div>
 
           <div className={styles.messages} ref={messagesRef}>
@@ -334,6 +388,17 @@ export default function ChatThreadPage() {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        open={deleteOpen}
+        title="Delete chat"
+        message={`Delete your chat with ${otherName}? It will stay in their inbox unless they delete it too.`}
+        confirmLabel="Delete"
+        loadingLabel="Deleting…"
+        loading={deletingChat}
+        onConfirm={handleDeleteChat}
+        onClose={() => setDeleteOpen(false)}
+      />
     </div>
   );
 }

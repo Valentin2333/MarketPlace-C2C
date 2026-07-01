@@ -131,6 +131,34 @@
   white-space: nowrap;
 }
 
+/* Delete chat action */
+.deleteChatBtn {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: var(--color-text-faint);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.deleteChatBtn:hover {
+  color: var(--color-error);
+  border-color: rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.deleteChatIcon {
+  width: 18px;
+  height: 18px;
+}
+
 /* Messages */
 .messages {
   flex: 1;
