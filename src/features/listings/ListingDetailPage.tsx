@@ -132,7 +132,7 @@ export default function ListingDetailPage() {
           <h2>Listing not found</h2>
           <p>This listing doesn’t exist or has been removed.</p>
           <button type="button" onClick={goBack} className={styles.back}>
-            ← Back to listings
+            ← Back
           </button>
         </div>
       </div>
@@ -174,7 +174,7 @@ export default function ListingDetailPage() {
     <div className={styles.page}>
       <div className={styles.container}>
         <button type="button" onClick={goBack} className={styles.back}>
-          ← Back to listings
+          ← Back
         </button>
 
         <div className={styles.layout}>
