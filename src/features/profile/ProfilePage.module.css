@@ -367,6 +367,27 @@
   border-color: rgba(248, 113, 113, 0.6);
 }
 
+/* Report user (visible to any signed-in non-owner viewer) */
+.reportUserBtn {
+  width: 100%;
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.reportUserBtn:hover {
+  color: var(--color-danger, #f87171);
+  border-color: var(--color-danger, #f87171);
+}
+
 /* Admin ban controls */
 .adminActions {
   display: flex;

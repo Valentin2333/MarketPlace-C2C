@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useCurrentUser } from "../../lib/useCurrentUser";
-import { useReports } from "../../components/Reports/useReports";
+import { useToast } from "../../components/Toast/useToast";
+import { useUserReports } from "../../components/UserReports/useUserReports";
 import styles from "./ReportDetailsPage.module.css";
 
 type ReportRow = {
@@ -14,15 +15,15 @@ type ReportRow = {
   reporter_name: string | null;
 };
 
-type ListingLite = {
+type ReportedUserLite = {
   id: string;
-  title: string | null;
+  name: string | null;
 };
 
 const REASON_LABELS: Record<string, string> = {
-  illegal: "Prohibited or illegal item",
+  harassment: "Harassment or abusive behavior",
   scam: "Scam or fraud",
-  inappropriate: "Inappropriate or offensive",
+  fake_profile: "Fake profile or impersonation",
   other: "Other",
 };
 
@@ -39,19 +40,22 @@ function formatDate(value: string | null): string {
   }).format(date);
 }
 
-export default function ReportDetailsPage() {
-  const { listingId } = useParams<{ listingId: string }>();
+export default function UserReportDetailsPage() {
+  const { userId: reportedUserId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { markListingSeen } = useReports();
+  const { markUserSeen } = useUserReports();
+  const toast = useToast();
   const { userId, isAdmin, ready: authReady } = useCurrentUser();
 
   const goBack = () => {
     if (location.key !== "default") navigate(-1);
-    else navigate("/admin?tab=reports");
+    else navigate("/admin?tab=users");
   };
 
-  const [listing, setListing] = useState<ListingLite | null>(null);
+  const [reportedUser, setReportedUser] = useState<ReportedUserLite | null>(
+    null,
+  );
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -67,33 +71,40 @@ export default function ReportDetailsPage() {
   }, [authReady, userId, isAdmin, navigate]);
 
   useEffect(() => {
-    if (!authReady || !isAdmin || !listingId) return;
+    if (!authReady || !isAdmin || !reportedUserId) return;
     let active = true;
 
     (async () => {
-      const [{ data: list }, { data: reps }] = await Promise.all([
+      const [
+        { data: profile, error: profileError },
+        { data: reps, error: repsError },
+      ] = await Promise.all([
         supabase
-          .from("listings")
-          .select("id, title")
-          .eq("id", listingId)
+          .from("profiles")
+          .select("id, name")
+          .eq("id", reportedUserId)
           .maybeSingle(),
-        supabase.rpc("admin_list_listing_reports", {
-          p_listing_id: listingId,
+        supabase.rpc("admin_list_user_reports", {
+          p_reported_id: reportedUserId,
         }),
       ]);
 
       if (!active) return;
-      setListing((list ?? null) as ListingLite | null);
+
+      if (profileError) toast.error(profileError.message);
+      if (repsError) toast.error(repsError.message);
+
+      setReportedUser((profile ?? null) as ReportedUserLite | null);
       setReports((reps ?? []) as ReportRow[]);
       setLoading(false);
 
-      markListingSeen(listingId);
+      markUserSeen(reportedUserId);
     })();
 
     return () => {
       active = false;
     };
-  }, [authReady, isAdmin, listingId, markListingSeen]);
+  }, [authReady, isAdmin, reportedUserId, markUserSeen, toast]);
 
   if (!authReady || !isAdmin) {
     return (
@@ -110,16 +121,19 @@ export default function ReportDetailsPage() {
           ← Back to admin
         </button>
 
-        <h1 className={styles.heading}>Reported listing</h1>
+        <h1 className={styles.heading}>Reported user</h1>
 
-        {listing ? (
-          <Link to={`/listings/${listing.id}`} className={styles.listingLink}>
-            {listing.title || "Untitled listing"}
+        {reportedUser ? (
+          <Link
+            to={`/profile/${reportedUser.id}`}
+            className={styles.listingLink}
+          >
+            {reportedUser.name || "Unnamed user"}
             <span className={styles.listingArrow}>↗</span>
           </Link>
         ) : (
           <p className={styles.unavailable}>
-            This listing is no longer available.
+            This user is no longer available.
           </p>
         )}
 
@@ -133,7 +147,7 @@ export default function ReportDetailsPage() {
         {loading ? (
           <div className={styles.state}>Loading…</div>
         ) : reports.length === 0 ? (
-          <div className={styles.state}>No reports for this listing.</div>
+          <div className={styles.state}>No reports for this user.</div>
         ) : (
           <div className={styles.reportList}>
             {reports.map((r) => (

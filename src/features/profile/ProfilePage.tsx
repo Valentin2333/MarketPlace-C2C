@@ -6,6 +6,7 @@ import { supabase } from "../../lib/supabase";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { useToast } from "../../components/Toast/useToast";
 import ConfirmModal from "../listings/ConfirmModal";
+import ReportUserModal from "./ReportUserModal";
 import { clearListingsCache } from "../listings/useListings";
 import {
   LISTING_IMAGES_BUCKET as LISTING_BUCKET,
@@ -56,6 +57,9 @@ export default function ProfilePage() {
 
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reporting, setReporting] = useState(false);
 
   const {
     register,
@@ -271,6 +275,31 @@ export default function ProfilePage() {
     );
   };
 
+  const handleReportUser = async (reason: string) => {
+    if (!id || !currentUserId) return;
+    setReporting(true);
+
+    const { error } = await supabase.from("user_reports").insert({
+      reported_id: id,
+      reporter_id: currentUserId,
+      reason,
+    });
+
+    setReporting(false);
+    setReportOpen(false);
+
+    if (error) {
+      if (error.code === "23505") {
+        toast.info("You’ve already reported this user.");
+        return;
+      }
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Thanks - we’ll review this profile.");
+  };
+
   const initials = (profile?.name ?? "?")
     .split(" ")
     .map((w) => w[0])
@@ -475,6 +504,20 @@ export default function ProfilePage() {
                 </div>
               </div>
 
+              <button
+                type="button"
+                className={styles.reportUserBtn}
+                onClick={() => {
+                  if (currentUserId) {
+                    setReportOpen(true);
+                  } else {
+                    navigate("/login");
+                  }
+                }}
+              >
+                🚩 Report user
+              </button>
+
               {canBan && (
                 <>
                   <div className={styles.divider} />
@@ -513,6 +556,13 @@ export default function ProfilePage() {
         loading={deletingAccount}
         onConfirm={onDeleteAccount}
         onClose={() => setDeleteAccountOpen(false)}
+      />
+
+      <ReportUserModal
+        open={reportOpen}
+        loading={reporting}
+        onSubmit={handleReportUser}
+        onClose={() => setReportOpen(false)}
       />
     </div>
   );

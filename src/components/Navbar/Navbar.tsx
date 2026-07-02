@@ -5,6 +5,7 @@ import CreateListingModal from "../../features/listings/CreateListingModal";
 import { useFavorites } from "../Favorites/useFavorites";
 import { useUnread } from "../Messages/useUnread";
 import { useReports } from "../Reports/useReports";
+import { useUserReports } from "../UserReports/useUserReports";
 
 import BrandMark from '../BrandMark/BrandMark'
 import ThemeToggle from "../Theme/ThemeToggle";
@@ -15,7 +16,9 @@ export default function Navbar() {
   const location = useLocation();
   const { favoriteIds } = useFavorites();
   const { unreadCount } = useUnread();
-  const { unseenCount: reportsUnseen } = useReports();
+  const { unseenCount: listingReportsUnseen } = useReports();
+  const { unseenCount: userReportsUnseen } = useUserReports();
+  const adminUnseen = listingReportsUnseen + userReportsUnseen;
   const { userId, isAdmin } = useCurrentUser();
   const [menuOpen, setMenuOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -79,8 +82,8 @@ export default function Navbar() {
                 className={`${styles.navLink} ${styles.adminLink} ${isActive("/admin") ? styles.navLinkActive : ""}`}
               >
                 Admin Panel
-                {reportsUnseen > 0 && (
-                  <span className={styles.favBadge}>{reportsUnseen}</span>
+                {adminUnseen > 0 && (
+                  <span className={styles.favBadge}>{adminUnseen}</span>
                 )}
               </Link>
             )}
@@ -155,8 +158,8 @@ export default function Navbar() {
                 className={`${styles.mobileLink} ${styles.mobileAdminLink}`}
               >
                 Admin Panel
-                {reportsUnseen > 0 && (
-                  <span className={styles.favBadge}>{reportsUnseen}</span>
+                {adminUnseen > 0 && (
+                  <span className={styles.favBadge}>{adminUnseen}</span>
                 )}
               </Link>
 
