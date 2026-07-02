@@ -270,9 +270,13 @@ export default function ChatThreadPage() {
   return (
     <div className={styles.page}>
       <div className={styles.container}>
-        <Link to="/messages" className={styles.back}>
-          ← All messages
-        </Link>
+        <button
+          type="button"
+          className={styles.back}
+          onClick={() => navigate(-1)}
+        >
+          ← Back
+        </button>
 
         <div className={styles.thread}>
           <div className={styles.header}>
