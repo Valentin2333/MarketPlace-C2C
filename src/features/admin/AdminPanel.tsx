@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { useToast } from "../../components/Toast/useToast";
 import { useReports } from "../../components/Reports/useReports";
+import { useUserReports } from "../../components/UserReports/useUserReports";
 import ConfirmModal from "../listings/ConfirmModal";
 import styles from "./AdminPanel.module.css";
 
@@ -11,7 +12,10 @@ type UserLite = {
   id: string;
   email: string;
   role: string | null;
+  reported: boolean;
 };
+
+type UserFilter = "all" | "reported" | "banned";
 
 const PAGE_SIZE = 10;
 
@@ -25,8 +29,23 @@ export default function AdminPanel() {
   const ready = authReady && isAdmin;
   const [searchParams, setSearchParams] = useSearchParams();
   const tab: Tab = searchParams.get("tab") === "users" ? "users" : "reports";
+  const filterParam = searchParams.get("filter");
+  const userFilter: UserFilter =
+    filterParam === "reported" || filterParam === "banned"
+      ? filterParam
+      : "all";
+
   const setTab = (next: Tab) => {
-    setSearchParams(next === "users" ? { tab: "users" } : {});
+    const params: Record<string, string> = {};
+    if (next === "users") params.tab = "users";
+    if (userFilter !== "all") params.filter = userFilter;
+    setSearchParams(params);
+  };
+
+  const setUserFilter = (next: UserFilter) => {
+    const params: Record<string, string> = { tab: "users" };
+    if (next !== "all") params.filter = next;
+    setSearchParams(params);
   };
 
   const [users, setUsers] = useState<UserLite[]>([]);
@@ -42,9 +61,19 @@ export default function AdminPanel() {
   const [searchLoading, setSearchLoading] = useState(false);
 
   const { reports, unseenCount, ready: reportsReady, refresh } = useReports();
+  const {
+    reportedUsers,
+    unseenCount: unseenUserReportsCount,
+    refresh: refreshUserReports,
+  } = useUserReports();
 
   const [confirmListingId, setConfirmListingId] = useState<string | null>(null);
   const [deletingReports, setDeletingReports] = useState(false);
+
+  const [confirmReportedUserId, setConfirmReportedUserId] = useState<
+    string | null
+  >(null);
+  const [deletingUserReports, setDeletingUserReports] = useState(false);
 
   const isSearching = search.trim().length >= 2;
 
@@ -70,6 +99,28 @@ export default function AdminPanel() {
     toast.success("Reports deleted.");
   };
 
+  const handleDeleteUserReports = async () => {
+    if (!confirmReportedUserId) return;
+    setDeletingUserReports(true);
+
+    const { error } = await supabase
+      .from("user_reports")
+      .update({ dismissed: true })
+      .eq("reported_id", confirmReportedUserId)
+      .eq("dismissed", false);
+
+    setDeletingUserReports(false);
+    setConfirmReportedUserId(null);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    await refreshUserReports();
+    toast.success("Reports deleted.");
+  };
+
   useEffect(() => {
     if (!authReady) return;
     if (!currentUid) {
@@ -81,44 +132,74 @@ export default function AdminPanel() {
     }
   }, [authReady, currentUid, isAdmin, navigate]);
 
-  const loadUsers = useCallback(async () => {
-    if (loadingRef.current || !hasMoreRef.current) return;
-    loadingRef.current = true;
-    setLoadingUsers(true);
+  const loadUsers = useCallback(
+    async (filter: UserFilter) => {
+      if (loadingRef.current || !hasMoreRef.current) return;
+      loadingRef.current = true;
+      setLoadingUsers(true);
 
-    const { data } = await supabase.rpc("admin_list_users", {
-      p_limit: PAGE_SIZE,
-      p_offset: offsetRef.current,
-    });
-    const rows = (data ?? []) as UserLite[];
+      const { data, error } = await supabase.rpc("admin_list_users_filtered", {
+        p_limit: PAGE_SIZE,
+        p_offset: offsetRef.current,
+        p_filter: filter,
+      });
 
-    setUsers((prev) => [...prev, ...rows]);
-    offsetRef.current += rows.length;
-    hasMoreRef.current = rows.length === PAGE_SIZE;
-    setHasMore(hasMoreRef.current);
+      if (error) {
+        toast.error(error.message);
+        hasMoreRef.current = false;
+        setHasMore(false);
+        setLoadingUsers(false);
+        loadingRef.current = false;
+        return;
+      }
 
-    setLoadingUsers(false);
-    loadingRef.current = false;
-  }, []);
+      const rows = (data ?? []) as UserLite[];
+
+      setUsers((prev) => [...prev, ...rows]);
+      offsetRef.current += rows.length;
+      hasMoreRef.current = rows.length === PAGE_SIZE;
+      setHasMore(hasMoreRef.current);
+
+      setLoadingUsers(false);
+      loadingRef.current = false;
+    },
+    [toast],
+  );
 
   useEffect(() => {
-    if (!ready || tab !== "users") return;
-    loadUsers();
+    if (!ready || tab !== "users" || userFilter === "reported") return;
+    let active = true;
+
+    (async () => {
+      setUsers([]);
+      offsetRef.current = 0;
+      hasMoreRef.current = true;
+      setHasMore(true);
+      if (active) await loadUsers(userFilter);
+    })();
 
     const el = sentinelRef.current;
-    if (!el) return;
+    if (!el) {
+      return () => {
+        active = false;
+      };
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) loadUsers();
+        if (entries[0].isIntersecting) loadUsers(userFilter);
       },
       { rootMargin: "120px" },
     );
     observer.observe(el);
-    return () => observer.disconnect();
-  }, [ready, tab, loadUsers]);
+    return () => {
+      active = false;
+      observer.disconnect();
+    };
+  }, [ready, tab, userFilter, loadUsers]);
 
   useEffect(() => {
+    if (userFilter === "reported") return;
     const timer = setTimeout(async () => {
       const q = search.trim();
       if (q.length < 2) {
@@ -127,13 +208,22 @@ export default function AdminPanel() {
         return;
       }
 
-      const { data } = await supabase.rpc("search_users_by_email", { q });
+      const { data, error } = await supabase.rpc(
+        "admin_search_users_filtered",
+        { q, p_filter: userFilter },
+      );
+      if (error) {
+        toast.error(error.message);
+        setSearchResults([]);
+        setSearchLoading(false);
+        return;
+      }
       setSearchResults((data ?? []) as UserLite[]);
       setSearchLoading(false);
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, userFilter, toast]);
 
   const toggleBan = async (user: UserLite) => {
     const newRole = user.role === "banned" ? null : "banned";
@@ -170,6 +260,15 @@ export default function AdminPanel() {
         </Link>
         {admin && <span className={styles.adminTag}>admin</span>}
         {banned && <span className={styles.bannedTag}>banned</span>}
+        {u.reported && (
+          <button
+            type="button"
+            className={styles.reportedTag}
+            onClick={() => navigate(`/admin/user-reports/${u.id}`)}
+          >
+            reported
+          </button>
+        )}
         {!admin && !isSelf && (
           <button
             type="button"
@@ -182,6 +281,29 @@ export default function AdminPanel() {
       </div>
     );
   };
+
+  const renderReportedUserRow = (r: (typeof reportedUsers)[number]) => (
+    <div key={r.reportedId} className={styles.userRow}>
+      {r.unseenCount > 0 && <span className={styles.unseenDot} />}
+      <Link
+        to={`/admin/user-reports/${r.reportedId}`}
+        className={styles.userEmail}
+      >
+        {r.reportedEmail}
+      </Link>
+      <span className={styles.reportCount}>
+        {r.count}
+        {r.count === 1 ? " report" : " reports"}
+      </span>
+      <button
+        type="button"
+        className={styles.deleteReportBtn}
+        onClick={() => setConfirmReportedUserId(r.reportedId)}
+      >
+        Delete report
+      </button>
+    </div>
+  );
 
   if (!ready) {
     return (
@@ -213,27 +335,67 @@ export default function AdminPanel() {
             onClick={() => setTab("users")}
           >
             Users
+            {unseenUserReportsCount > 0 && (
+              <span className={styles.tabBadge}>{unseenUserReportsCount}</span>
+            )}
           </button>
         </div>
 
         {tab === "users" ? (
           <>
-            <div className={styles.userSearch}>
-              <input
-                className={styles.input}
-                type="text"
-                placeholder="Search users by email…"
-                value={search}
-                autoComplete="off"
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setSearchLoading(e.target.value.trim().length >= 2);
-                }}
-              />
+            <div className={styles.userFilters}>
+              <button
+                type="button"
+                className={`${styles.filterPill} ${userFilter === "all" ? styles.filterPillActive : ""}`}
+                onClick={() => setUserFilter("all")}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                className={`${styles.filterPill} ${userFilter === "reported" ? styles.filterPillActive : ""}`}
+                onClick={() => setUserFilter("reported")}
+              >
+                Reported
+                {unseenUserReportsCount > 0 && (
+                  <span className={styles.filterBadge}>
+                    {unseenUserReportsCount}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                className={`${styles.filterPill} ${userFilter === "banned" ? styles.filterPillActive : ""}`}
+                onClick={() => setUserFilter("banned")}
+              >
+                Banned
+              </button>
             </div>
 
+            {userFilter !== "reported" && (
+              <div className={styles.userSearch}>
+                <input
+                  className={styles.input}
+                  type="text"
+                  placeholder="Search users by email…"
+                  value={search}
+                  autoComplete="off"
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setSearchLoading(e.target.value.trim().length >= 2);
+                  }}
+                />
+              </div>
+            )}
+
             <div className={styles.userList}>
-              {isSearching ? (
+              {userFilter === "reported" ? (
+                reportedUsers.length === 0 ? (
+                  <div className={styles.hint}>No reported users.</div>
+                ) : (
+                  reportedUsers.map(renderReportedUserRow)
+                )
+              ) : isSearching ? (
                 <>
                   {searchResults.map(renderRow)}
                   {searchLoading && (
@@ -247,6 +409,13 @@ export default function AdminPanel() {
                 <>
                   {users.map(renderRow)}
                   {loadingUsers && <div className={styles.hint}>Loading…</div>}
+                  {!loadingUsers && !hasMore && users.length === 0 && (
+                    <div className={styles.hint}>
+                      {userFilter === "banned"
+                        ? "No banned users."
+                        : "No users."}
+                    </div>
+                  )}
                   {!hasMore && users.length > 0 && (
                     <div className={styles.hint}>No more users.</div>
                   )}
@@ -304,6 +473,17 @@ export default function AdminPanel() {
         loading={deletingReports}
         onConfirm={handleDeleteReports}
         onClose={() => setConfirmListingId(null)}
+      />
+
+      <ConfirmModal
+        open={confirmReportedUserId !== null}
+        title="Delete reports"
+        message="Delete all reports for this user? The users who reported them won't be able to report them again."
+        confirmLabel="Delete"
+        loadingLabel="Deleting…"
+        loading={deletingUserReports}
+        onConfirm={handleDeleteUserReports}
+        onClose={() => setConfirmReportedUserId(null)}
       />
     </div>
   );
