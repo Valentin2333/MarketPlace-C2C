@@ -1,7 +1,16 @@
 import { Router } from "express";
-import { findUserByEmail, createUser, type User } from "../db/users.js";
+import { findUserByEmail, findUserById, createUser, type User } from "../db/users.js";
 import { hashPassword, comparePassword } from "./password.js";
 import { signAuthToken } from "./jwt.js";
+import {
+  issueRefreshToken,
+  consumeRefreshToken,
+  revokeRefreshToken,
+} from "./refreshTokens.js";
+import {
+  requireAuth,
+  type AuthenticatedRequest,
+} from "../middleware/requireAuth.js";
 
 const router = Router();
 
@@ -18,6 +27,12 @@ function toPublicUser(user: User) {
     avatarUrl: user.avatar_url,
     role: user.role,
   };
+}
+
+async function issueTokenPair(user: User) {
+  const accessToken = signAuthToken({ sub: user.id, role: user.role });
+  const refreshToken = await issueRefreshToken(user.id);
+  return { accessToken, refreshToken };
 }
 
 router.post("/register", async (req, res) => {
@@ -41,9 +56,9 @@ router.post("/register", async (req, res) => {
 
   const passwordHash = await hashPassword(password);
   const user = await createUser({ email: normalizedEmail, passwordHash });
-  const token = signAuthToken({ sub: user.id, role: user.role });
+  const tokens = await issueTokenPair(user);
 
-  res.status(201).json({ user: toPublicUser(user), token });
+  res.status(201).json({ user: toPublicUser(user), ...tokens });
 });
 
 router.post("/login", async (req, res) => {
@@ -64,8 +79,52 @@ router.post("/login", async (req, res) => {
     return;
   }
 
-  const token = signAuthToken({ sub: user.id, role: user.role });
-  res.json({ user: toPublicUser(user), token });
+  const tokens = await issueTokenPair(user);
+  res.json({ user: toPublicUser(user), ...tokens });
+});
+
+router.post("/refresh", async (req, res) => {
+  const { refreshToken } = req.body ?? {};
+
+  if (typeof refreshToken !== "string") {
+    res.status(400).json({ error: "refreshToken is required" });
+    return;
+  }
+
+  const userId = await consumeRefreshToken(refreshToken);
+  if (!userId) {
+    res.status(401).json({ error: "Invalid or expired refresh token" });
+    return;
+  }
+
+  const user = await findUserById(userId);
+  if (!user) {
+    res.status(401).json({ error: "Invalid or expired refresh token" });
+    return;
+  }
+
+  const tokens = await issueTokenPair(user);
+  res.json(tokens);
+});
+
+router.post("/logout", async (req, res) => {
+  const { refreshToken } = req.body ?? {};
+
+  if (typeof refreshToken === "string") {
+    await revokeRefreshToken(refreshToken);
+  }
+
+  res.status(204).send();
+});
+
+router.get("/me", requireAuth, async (req: AuthenticatedRequest, res) => {
+  const user = await findUserById(req.user!.id);
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  res.json({ user: toPublicUser(user) });
 });
 
 export default router;
