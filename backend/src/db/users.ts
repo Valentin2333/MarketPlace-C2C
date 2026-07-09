@@ -39,3 +39,13 @@ export async function createUser(params: {
   );
   return result.rows[0];
 }
+
+export async function updateUserPassword(
+  userId: string,
+  passwordHash: string,
+): Promise<void> {
+  await pool.query("UPDATE users SET password_hash = $1 WHERE id = $2", [
+    passwordHash,
+    userId,
+  ]);
+}
