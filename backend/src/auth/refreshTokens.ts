@@ -53,3 +53,12 @@ export async function revokeRefreshToken(token: string): Promise<void> {
     [tokenHash],
   );
 }
+
+export async function revokeAllRefreshTokensForUser(
+  userId: string,
+): Promise<void> {
+  await pool.query(
+    "UPDATE refresh_tokens SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL",
+    [userId],
+  );
+}

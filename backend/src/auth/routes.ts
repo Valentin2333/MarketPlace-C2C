@@ -1,12 +1,24 @@
 import { Router } from "express";
-import { findUserByEmail, findUserById, createUser, type User } from "../db/users.js";
+import {
+  findUserByEmail,
+  findUserById,
+  createUser,
+  updateUserPassword,
+  type User,
+} from "../db/users.js";
 import { hashPassword, comparePassword } from "./password.js";
 import { signAuthToken } from "./jwt.js";
 import {
   issueRefreshToken,
   consumeRefreshToken,
   revokeRefreshToken,
+  revokeAllRefreshTokensForUser,
 } from "./refreshTokens.js";
+import {
+  issuePasswordResetToken,
+  consumePasswordResetToken,
+} from "./passwordResetTokens.js";
+import { sendEmail } from "../email/gmail.js";
 import {
   requireAuth,
   type AuthenticatedRequest,
@@ -33,6 +45,10 @@ async function issueTokenPair(user: User) {
   const accessToken = signAuthToken({ sub: user.id, role: user.role });
   const refreshToken = await issueRefreshToken(user.id);
   return { accessToken, refreshToken };
+}
+
+function passwordResetEmailHtml(resetUrl: string): string {
+  return `<p>Click the link below to reset your MarketPlace C2C password. This link expires in 1 hour.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you didn't request this, you can safely ignore this email.</p>`;
 }
 
 router.post("/register", async (req, res) => {
@@ -125,6 +141,53 @@ router.get("/me", requireAuth, async (req: AuthenticatedRequest, res) => {
   }
 
   res.json({ user: toPublicUser(user) });
+});
+
+router.post("/password-reset/request", async (req, res) => {
+  const { email } = req.body ?? {};
+
+  if (typeof email !== "string" || !isValidEmail(email)) {
+    res.status(400).json({ error: "A valid email is required" });
+    return;
+  }
+
+  const user = await findUserByEmail(email.trim().toLowerCase());
+  if (user) {
+    const token = await issuePasswordResetToken(user.id);
+    const resetUrl = `${process.env.FRONTEND_ORIGIN}/reset-password?token=${token}`;
+    await sendEmail({
+      to: user.email,
+      subject: "Reset your MarketPlace C2C password",
+      html: passwordResetEmailHtml(resetUrl),
+    });
+  }
+
+  res.status(204).send();
+});
+
+router.post("/password-reset/confirm", async (req, res) => {
+  const { token, password } = req.body ?? {};
+
+  if (typeof token !== "string") {
+    res.status(400).json({ error: "token is required" });
+    return;
+  }
+  if (typeof password !== "string" || password.length < 8) {
+    res.status(400).json({ error: "Password must be at least 8 characters" });
+    return;
+  }
+
+  const userId = await consumePasswordResetToken(token);
+  if (!userId) {
+    res.status(400).json({ error: "Invalid or expired reset token" });
+    return;
+  }
+
+  const passwordHash = await hashPassword(password);
+  await updateUserPassword(userId, passwordHash);
+  await revokeAllRefreshTokensForUser(userId);
+
+  res.status(204).send();
 });
 
 export default router;
