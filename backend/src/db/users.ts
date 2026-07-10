@@ -30,12 +30,13 @@ export async function findUserById(id: string): Promise<User | null> {
 export async function createUser(params: {
   email: string;
   passwordHash: string;
+  name?: string;
 }): Promise<User> {
   const result = await pool.query<User>(
-    `INSERT INTO users (email, password_hash)
-     VALUES ($1, $2)
+    `INSERT INTO users (email, password_hash, name)
+     VALUES ($1, $2, $3)
      RETURNING *`,
-    [params.email, params.passwordHash],
+    [params.email, params.passwordHash, params.name ?? null],
   );
   return result.rows[0];
 }

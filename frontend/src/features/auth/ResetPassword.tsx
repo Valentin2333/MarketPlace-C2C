@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { confirmPasswordResetRequest } from "../../lib/auth/authApi";
 import AuthHeader from "./AuthHeader";
 import styles from "./ResetPassword.module.css";
 
@@ -12,10 +12,9 @@ type ResetFormData = {
 
 export default function ResetPassword() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token");
 
-  const [status, setStatus] = useState<"checking" | "ready" | "invalid">(
-    "checking",
-  );
   const [serverError, setServerError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -27,54 +26,23 @@ export default function ResetPassword() {
     formState: { errors },
   } = useForm<ResetFormData>();
 
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
-        setStatus("ready");
-      }
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setStatus("ready");
-        return;
-      }
-      timer = setTimeout(() => {
-        supabase.auth.getSession().then(({ data: { session: s } }) => {
-          setStatus((prev) =>
-            prev === "ready" ? prev : s ? "ready" : "invalid",
-          );
-        });
-      }, 1500);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-      if (timer) clearTimeout(timer);
-    };
-  }, []);
-
   const onSubmit = async (data: ResetFormData) => {
+    if (!token) return;
+
     setLoading(true);
     setServerError(null);
 
-    const { error } = await supabase.auth.updateUser({
-      password: data.password,
-    });
-
-    setLoading(false);
-
-    if (error) {
-      setServerError(error.message);
-      return;
+    try {
+      await confirmPasswordResetRequest({ token, password: data.password });
+      setDone(true);
+      setTimeout(() => navigate("/login"), 2500);
+    } catch (err) {
+      setServerError(
+        err instanceof Error ? err.message : "Something went wrong",
+      );
+    } finally {
+      setLoading(false);
     }
-
-    setDone(true);
-    setTimeout(() => navigate("/login"), 2500);
   };
 
   return (
@@ -93,19 +61,15 @@ export default function ResetPassword() {
                 Your password has been updated. Redirecting you to sign in…
               </p>
             </div>
-          ) : status === "invalid" ? (
+          ) : !token ? (
             <div className={styles.sentBox}>
               <p className={styles.sentText}>
-                This reset link is invalid or has expired. Request a new one to
-                continue.
+                This reset link is invalid or has expired. Request a new one
+                to continue.
               </p>
               <Link to="/forgot-password" className={styles.inlineBtn}>
                 Request a new link
               </Link>
-            </div>
-          ) : status === "checking" ? (
-            <div className={styles.sentBox}>
-              <p className={styles.sentText}>Verifying your reset link…</p>
             </div>
           ) : (
             <form
