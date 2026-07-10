@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../lib/auth/useAuth";
 import { friendlyAuthError } from "../../lib/authErrors";
 import AuthHeader from "./AuthHeader";
 import styles from "./Register.module.css";
@@ -15,6 +15,7 @@ type RegisterFormData = {
 
 export default function Register() {
   const navigate = useNavigate();
+  const { register: registerAccount } = useAuth();
   const [serverError, setServerError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -29,25 +30,16 @@ export default function Register() {
     setLoading(true);
     setServerError(null);
 
-    const { data: result, error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: { data: { name: data.name } },
-    });
-
-    setLoading(false);
-
-    if (error) {
-      setServerError(friendlyAuthError(error.message));
-      return;
+    try {
+      await registerAccount(data.email, data.password, data.name);
+      navigate("/listings");
+    } catch (err) {
+      setServerError(
+        friendlyAuthError(err instanceof Error ? err.message : ""),
+      );
+    } finally {
+      setLoading(false);
     }
-
-    if (result.user && result.user.identities?.length === 0) {
-      setServerError(friendlyAuthError("User already registered"));
-      return;
-    }
-
-    navigate("/listings");
   };
 
   return (

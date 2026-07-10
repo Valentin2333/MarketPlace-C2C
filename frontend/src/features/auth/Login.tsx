@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../lib/auth/useAuth";
+import { friendlyAuthError } from "../../lib/authErrors";
 import AuthHeader from "./AuthHeader";
 import styles from "./Login.module.css";
 
@@ -12,6 +13,7 @@ type LoginFormData = {
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [serverError, setServerError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -25,19 +27,16 @@ export default function Login() {
     setLoading(true);
     setServerError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: data.email,
-      password: data.password,
-    });
-
-    setLoading(false);
-
-    if (error) {
-      setServerError("Invalid email or password.");
-      return;
+    try {
+      await login(data.email, data.password);
+      navigate("/listings");
+    } catch (err) {
+      setServerError(
+        friendlyAuthError(err instanceof Error ? err.message : ""),
+      );
+    } finally {
+      setLoading(false);
     }
-
-    navigate("/listings");
   };
 
   return (

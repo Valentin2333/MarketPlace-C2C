@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import { requestPasswordResetRequest } from "../../lib/auth/authApi";
 import AuthHeader from "./AuthHeader";
 import styles from "./ForgotPassword.module.css";
 
@@ -25,17 +25,16 @@ export default function ForgotPassword() {
     setLoading(true);
     setServerError(null);
 
-    const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-
-    setLoading(false);
-
-    if (error) {
-      setServerError(error.message);
-      return;
+    try {
+      await requestPasswordResetRequest(data.email);
+      setSent(true);
+    } catch (err) {
+      setServerError(
+        err instanceof Error ? err.message : "Something went wrong",
+      );
+    } finally {
+      setLoading(false);
     }
-    setSent(true);
   };
 
   return (

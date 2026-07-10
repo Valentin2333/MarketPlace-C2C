@@ -52,7 +52,7 @@ function passwordResetEmailHtml(resetUrl: string): string {
 }
 
 router.post("/register", async (req, res) => {
-  const { email, password } = req.body ?? {};
+  const { email, password, name } = req.body ?? {};
 
   if (typeof email !== "string" || !isValidEmail(email)) {
     res.status(400).json({ error: "A valid email is required" });
@@ -60,6 +60,10 @@ router.post("/register", async (req, res) => {
   }
   if (typeof password !== "string" || password.length < 8) {
     res.status(400).json({ error: "Password must be at least 8 characters" });
+    return;
+  }
+  if (name !== undefined && typeof name !== "string") {
+    res.status(400).json({ error: "Name must be a string" });
     return;
   }
 
@@ -71,7 +75,11 @@ router.post("/register", async (req, res) => {
   }
 
   const passwordHash = await hashPassword(password);
-  const user = await createUser({ email: normalizedEmail, passwordHash });
+  const user = await createUser({
+    email: normalizedEmail,
+    passwordHash,
+    name: name?.trim() || undefined,
+  });
   const tokens = await issueTokenPair(user);
 
   res.status(201).json({ user: toPublicUser(user), ...tokens });
