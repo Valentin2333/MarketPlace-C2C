@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import authRouter from "./auth/routes.js";
+import listingsRouter from "./listings/routes.js";
+import categoriesRouter from "./categories/routes.js";
 
 const app = express();
 
@@ -16,6 +18,8 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/auth", authRouter);
+app.use("/listings", listingsRouter);
+app.use("/categories", categoriesRouter);
 
 app.use(
   (
