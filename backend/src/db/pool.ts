@@ -1,5 +1,7 @@
-import { Pool } from "pg";
+import { Pool, types } from "pg";
 import "dotenv/config";
+
+types.setTypeParser(1700, (value: string) => parseFloat(value));
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -10,4 +12,8 @@ if (!connectionString) {
 export const pool = new Pool({
   connectionString,
   ssl: { rejectUnauthorized: false },
+});
+
+pool.on("error", (err) => {
+  console.error("Unexpected error on idle database client", err);
 });
