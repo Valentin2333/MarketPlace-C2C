@@ -2,6 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
 import { useForm } from "react-hook-form";
 import { supabase } from "../../lib/supabase";
+import { useCurrentUser } from "../../lib/useCurrentUser";
+import {
+  fetchCategories,
+  fetchListing,
+  updateListingRequest,
+} from "../../lib/listings/listingsApi";
 import { clearListingsCache } from "./useListings";
 import { useToast } from "../../components/Toast/useToast";
 import {
@@ -22,7 +28,7 @@ type Category = {
 type ExistingImage = {
   key: string;
   kind: "existing";
-  id: number;
+  id: string;
   url: string;
 };
 
@@ -57,6 +63,7 @@ export default function EditListingModal({
   onSaved,
 }: EditListingModalProps) {
   const toast = useToast();
+  const { userId } = useCurrentUser();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [images, setImages] = useState<EditImage[]>([]);
@@ -67,7 +74,7 @@ export default function EditListingModal({
   const [submitting, setSubmitting] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const originalRef = useRef<{ id: number; url: string }[]>([]);
+  const originalRef = useRef<{ id: string; url: string }[]>([]);
 
   const {
     register,
@@ -82,11 +89,7 @@ export default function EditListingModal({
 
   useEffect(() => {
     if (!open || categories.length > 0) return;
-    supabase
-      .from("categories")
-      .select("id, name")
-      .order("name")
-      .then(({ data }) => setCategories((data ?? []) as Category[]));
+    fetchCategories().then(setCategories);
   }, [open, categories.length]);
 
   useEffect(() => {
@@ -95,38 +98,31 @@ export default function EditListingModal({
     setLoaded(false);
 
     const load = async () => {
-      const { data: row } = await supabase
-        .from("listings")
-        .select("title, description, price, city, category_id")
-        .eq("id", listingId)
-        .single();
-
-      const { data: imgRows } = await supabase
-        .from("listing_images")
-        .select("id, url, position")
-        .eq("listing_id", listingId)
-        .order("position", { ascending: true });
+      const listing = await fetchListing(listingId).catch(() => null);
 
       if (!active) return;
 
-      if (row) {
+      if (listing) {
         reset({
-          title: row.title ?? "",
-          description: row.description ?? "",
-          price: row.price != null ? String(row.price) : "",
-          categoryId: row.category_id != null ? String(row.category_id) : "",
-          city: row.city ?? "",
+          title: listing.title ?? "",
+          description: listing.description ?? "",
+          price: listing.price != null ? String(listing.price) : "",
+          categoryId:
+            listing.categoryId != null ? String(listing.categoryId) : "",
+          city: listing.city ?? "",
         });
       }
 
-      const existing: ExistingImage[] = (
-        (imgRows ?? []) as { id: number; url: string }[]
-      ).map((r) => ({
-        key: `e-${r.id}`,
-        kind: "existing",
-        id: r.id,
-        url: r.url,
-      }));
+      const existing: ExistingImage[] = (listing?.listing_images ?? [])
+        .filter((img): img is { id: string; url: string; position: number } =>
+          typeof img.id === "string",
+        )
+        .map((r) => ({
+          key: `e-${r.id}`,
+          kind: "existing",
+          id: r.id,
+          url: r.url,
+        }));
       originalRef.current = existing.map((e) => ({ id: e.id, url: e.url }));
       setImages(existing);
       setMainKey(existing[0]?.key ?? null);
@@ -225,97 +221,75 @@ export default function EditListingModal({
     setSubmitting(true);
     setServerError(null);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    if (!userId) {
       setSubmitting(false);
       toast.error("You must be signed in to edit a listing.");
       return;
     }
 
-    const { error: updateError } = await supabase
-      .from("listings")
-      .update({
+    try {
+      const ordered = [...images].sort((a, b) => {
+        if (a.key === mainKey) return -1;
+        if (b.key === mainKey) return 1;
+        return 0;
+      });
+
+      const rows: { url: string; position: number }[] = [];
+
+      for (let i = 0; i < ordered.length; i++) {
+        const img = ordered[i];
+        if (img.kind === "existing") {
+          rows.push({ url: img.url, position: i });
+          continue;
+        }
+        const { blob, ext, type } = await compressImage(img.file);
+        const path = `${userId}/${listingId}/${i}-${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from(BUCKET)
+          .upload(path, blob, { contentType: type, upsert: false });
+        if (uploadError) throw new Error(uploadError.message);
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from(BUCKET).getPublicUrl(path);
+        rows.push({ url: publicUrl, position: i });
+      }
+
+      await updateListingRequest(listingId, {
         title: values.title.trim(),
         description: values.description.trim(),
         price: Number(values.price),
         city: values.city.trim(),
-        category_id: Number(values.categoryId),
-      })
-      .eq("id", listingId);
+        categoryId: Number(values.categoryId),
+        images: rows,
+      });
 
-    if (updateError) {
+      const keptIds = new Set(
+        images
+          .filter((img): img is ExistingImage => img.kind === "existing")
+          .map((img) => img.id),
+      );
+      const removedPaths = originalRef.current
+        .filter((o) => !keptIds.has(o.id))
+        .map((o) => pathFromUrl(o.url))
+        .filter((p): p is string => !!p);
+
+      if (removedPaths.length > 0) {
+        await supabase.storage.from(BUCKET).remove(removedPaths);
+      }
+
+      clearListingsCache();
+      revokeNew(images);
+      setImages([]);
+      setMainKey(null);
       setSubmitting(false);
-      toast.error(updateError.message);
-      return;
+      toast.success("Listing updated.");
+      onSaved();
+    } catch (err) {
+      setSubmitting(false);
+      toast.error(
+        err instanceof Error ? err.message : "Could not update listing.",
+      );
     }
-
-    const ordered = [...images].sort((a, b) => {
-      if (a.key === mainKey) return -1;
-      if (b.key === mainKey) return 1;
-      return 0;
-    });
-
-    const rows: { listing_id: string; url: string; position: number }[] = [];
-
-    for (let i = 0; i < ordered.length; i++) {
-      const img = ordered[i];
-      if (img.kind === "existing") {
-        rows.push({ listing_id: listingId, url: img.url, position: i });
-        continue;
-      }
-      const { blob, ext, type } = await compressImage(img.file);
-      const path = `${user.id}/${listingId}/${i}-${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from(BUCKET)
-        .upload(path, blob, { contentType: type, upsert: false });
-      if (uploadError) {
-        setSubmitting(false);
-        toast.error(uploadError.message);
-        return;
-      }
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from(BUCKET).getPublicUrl(path);
-      rows.push({ listing_id: listingId, url: publicUrl, position: i });
-    }
-
-    const keptIds = new Set(
-      images
-        .filter((img): img is ExistingImage => img.kind === "existing")
-        .map((img) => img.id),
-    );
-    const removedPaths = originalRef.current
-      .filter((o) => !keptIds.has(o.id))
-      .map((o) => pathFromUrl(o.url))
-      .filter((p): p is string => !!p);
-
-    if (removedPaths.length > 0) {
-      await supabase.storage.from(BUCKET).remove(removedPaths);
-    }
-
-    await supabase.from("listing_images").delete().eq("listing_id", listingId);
-
-    if (rows.length > 0) {
-      const { error: insertError } = await supabase
-        .from("listing_images")
-        .insert(rows);
-      if (insertError) {
-        setSubmitting(false);
-        toast.error(insertError.message);
-        return;
-      }
-    }
-
-    clearListingsCache();
-    revokeNew(images);
-    setImages([]);
-    setMainKey(null);
-    setSubmitting(false);
-    toast.success("Listing updated.");
-    onSaved();
   };
 
   return (

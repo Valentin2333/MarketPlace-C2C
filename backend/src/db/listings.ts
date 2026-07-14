@@ -21,9 +21,10 @@ export interface ListingDetailRow {
   price: number | null;
   city: string | null;
   created_at: Date;
+  categoryId: number | null;
   category: { name: string } | null;
   seller: { id: string; name: string | null; avatarUrl: string | null } | null;
-  images: ListingImageRow[];
+  images: (ListingImageRow & { id: string })[];
 }
 
 export interface ListingFilters {
@@ -126,6 +127,7 @@ export async function getListingById(
 ): Promise<ListingDetailRow | null> {
   const result = await pool.query(
     `SELECT l.id, l.title, l.description, l.price, l.city, l.created_at,
+            l.category_id AS "categoryId",
             CASE WHEN c.id IS NOT NULL
               THEN json_build_object('name', c.name)
             END AS category,
@@ -134,7 +136,7 @@ export async function getListingById(
             END AS seller,
             COALESCE(
               json_agg(
-                json_build_object('url', li.url, 'position', li.position)
+                json_build_object('id', li.id, 'url', li.url, 'position', li.position)
                 ORDER BY li.position
               ) FILTER (WHERE li.id IS NOT NULL),
               '[]'

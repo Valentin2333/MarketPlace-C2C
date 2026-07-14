@@ -6,7 +6,11 @@ import {
   useState,
 } from "react";
 import { useNavigationType, useSearchParams } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import {
+  fetchListings,
+  fetchListingCities,
+  fetchCategories,
+} from "../../lib/listings/listingsApi";
 import type { PanelFilters, SortOption } from "./FiltersDrawer";
 
 export type ListingRow = {
@@ -85,44 +89,19 @@ async function fetchPage(search: string, f: PanelFilters, from: number) {
     .trim()
     .replace(/[%,()]/g, " ")
     .trim();
-  const min = parseFloat(f.minPrice);
-  const max = parseFloat(f.maxPrice);
 
-  const base =
-    from === 0
-      ? supabase
-          .from("listings")
-          .select("id, title, price, city, listing_images ( url, position )", {
-            count: "exact",
-          })
-      : supabase
-          .from("listings")
-          .select("id, title, price, city, listing_images ( url, position )");
+  const { listings, total } = await fetchListings({
+    q: keyword || undefined,
+    category: f.categoryId || undefined,
+    city: f.city || undefined,
+    min: f.minPrice || undefined,
+    max: f.maxPrice || undefined,
+    sort: f.sort,
+    limit: PAGE_SIZE,
+    offset: from,
+  });
 
-  let query = base.eq("status", "active");
-
-  if (keyword) {
-    query = query.or(`title.ilike.%${keyword}%,description.ilike.%${keyword}%`);
-  }
-  if (f.categoryId) query = query.eq("category_id", Number(f.categoryId));
-  if (f.city) query = query.eq("city", f.city);
-  if (!Number.isNaN(min)) query = query.gte("price", min);
-  if (!Number.isNaN(max)) query = query.lte("price", max);
-
-  const ordered =
-    f.sort === "oldest"
-      ? query.order("created_at", { ascending: true })
-      : f.sort === "price_asc"
-        ? query.order("price", { ascending: true, nullsFirst: false })
-        : f.sort === "price_desc"
-          ? query.order("price", { ascending: false, nullsFirst: false })
-          : query.order("created_at", { ascending: false });
-
-  const { data, count, error } = await ordered
-    .order("position", { referencedTable: "listing_images", ascending: true })
-    .range(from, from + PAGE_SIZE - 1);
-  if (error) throw new Error(error.message);
-  return { rows: (data ?? []) as ListingRow[], count: count ?? null };
+  return { rows: listings as ListingRow[], count: from === 0 ? total : null };
 }
 
 export function useListings() {
@@ -179,23 +158,8 @@ export function useListings() {
   useEffect(() => {
     if (facetsCache) return;
     const loadFacets = async () => {
-      const { data: cats } = await supabase
-        .from("categories")
-        .select("id, name")
-        .order("name");
-      const categoriesData = (cats ?? []) as { id: number; name: string }[];
-
-      const { data: cityRows } = await supabase
-        .from("listings")
-        .select("city")
-        .eq("status", "active");
-      const citiesData = Array.from(
-        new Set(
-          ((cityRows ?? []) as { city: string | null }[])
-            .map((r) => r.city)
-            .filter((c): c is string => !!c),
-        ),
-      ).sort();
+      const categoriesData = await fetchCategories();
+      const citiesData = await fetchListingCities();
 
       facetsCache = { categories: categoriesData, cities: citiesData };
       setCategories(categoriesData);

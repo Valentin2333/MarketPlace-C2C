@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useParams, useNavigationType } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import { fetchListings, fetchPublicUser } from "../../lib/listings/listingsApi";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import ListingCard from "../../components/ListingCard/ListingCard";
 import styles from "./UserListingsPage.module.css";
@@ -36,35 +36,24 @@ export default function UserListingsPage() {
       setLoading(true);
       setError(null);
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("name")
-        .eq("id", id)
-        .maybeSingle();
+      const profile = await fetchPublicUser(id);
 
-      const { data, error: listError } = await supabase
-        .from("listings")
-        .select(
-          "id, title, price, city, created_at, listing_images ( url, position )",
-        )
-        .eq("user_id", id)
-        .order("created_at", { ascending: false })
-        .order("position", {
-          referencedTable: "listing_images",
-          ascending: true,
+      try {
+        const { listings: rows } = await fetchListings({
+          userId: id,
+          sort: "newest",
         });
 
-      if (!active) return;
-
-      if (profile?.name) setOwnerName(profile.name);
-
-      if (listError) {
-        setError(listError.message);
+        if (!active) return;
+        if (profile?.name) setOwnerName(profile.name);
+        setListings(rows as UserListing[]);
+      } catch (e) {
+        if (!active) return;
+        setError(e instanceof Error ? e.message : "Failed to load listings");
         setListings([]);
-      } else {
-        setListings((data ?? []) as unknown as UserListing[]);
+      } finally {
+        if (active) setLoading(false);
       }
-      setLoading(false);
     };
 
     load();

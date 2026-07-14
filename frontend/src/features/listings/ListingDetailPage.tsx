@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import {
+  fetchListing,
+  deleteListingRequest,
+  type ListingDetail,
+} from "../../lib/listings/listingsApi";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { formatPrice, formatDate } from "../../lib/format";
 import { clearListingsCache } from "./useListings";
@@ -15,22 +20,6 @@ import {
 } from "./listingImages";
 
 import styles from "./ListingDetailPage.module.css";
-
-type ListingDetail = {
-  id: string;
-  title: string;
-  description: string | null;
-  price: number | null;
-  city: string | null;
-  created_at: string | null;
-  categories: { name: string } | null;
-  listing_images: { url: string }[] | null;
-  profiles: {
-    id: string;
-    name: string | null;
-    avatar_url: string | null;
-  } | null;
-};
 
 export default function ListingDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -63,23 +52,17 @@ export default function ListingDetailPage() {
     setNotFound(false);
     setActiveImage(0);
 
-    const { data, error } = await supabase
-      .from("listings")
-      .select(
-        "id, title, description, price, city, created_at, categories ( name ), listing_images ( url ), profiles ( id, name, avatar_url )",
-      )
-      .eq("id", id)
-      .maybeSingle();
-
-    if (reqId !== reqIdRef.current) return;
-
-    if (error || !data) {
+    try {
+      const data = await fetchListing(id);
+      if (reqId !== reqIdRef.current) return;
+      setListing(data);
+    } catch {
+      if (reqId !== reqIdRef.current) return;
       setNotFound(true);
       setListing(null);
-    } else {
-      setListing(data as unknown as ListingDetail);
+    } finally {
+      if (reqId === reqIdRef.current) setLoading(false);
     }
-    setLoading(false);
   }, [id]);
 
   useEffect(() => {
@@ -95,15 +78,12 @@ export default function ListingDetailPage() {
       .map((img) => pathFromUrl(img.url))
       .filter((p): p is string => !!p);
 
-    const { error } = await supabase
-      .from("listings")
-      .delete()
-      .eq("id", listing.id);
-
-    if (error) {
+    try {
+      await deleteListingRequest(listing.id);
+    } catch (err) {
       setDeleting(false);
       setConfirmOpen(false);
-      toast.error(error.message);
+      toast.error(err instanceof Error ? err.message : "Could not delete listing.");
       return;
     }
 

@@ -3,6 +3,12 @@ import type { ChangeEvent, DragEvent } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../lib/auth/useAuth";
+import {
+  fetchCategories,
+  createListingRequest,
+  updateListingRequest,
+} from "../../lib/listings/listingsApi";
 import { clearListingsCache } from "./useListings";
 import { useToast } from "../../components/Toast/useToast";
 import { LISTING_IMAGES_BUCKET as BUCKET, compressImage } from "./listingImages";
@@ -41,6 +47,7 @@ export default function CreateListingModal({
 }: CreateListingModalProps) {
   const navigate = useNavigate();
   const toast = useToast();
+  const { user } = useAuth();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [images, setImages] = useState<PendingImage[]>([]);
@@ -64,31 +71,13 @@ export default function CreateListingModal({
 
   useEffect(() => {
     if (!open || categories.length > 0) return;
-    supabase
-      .from("categories")
-      .select("id, name")
-      .order("name")
-      .then(({ data }) => setCategories((data ?? []) as Category[]));
+    fetchCategories().then(setCategories);
   }, [open, categories.length]);
 
   useEffect(() => {
-    if (!open) return;
-    let active = true;
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      supabase
-        .from("profiles")
-        .select("city")
-        .eq("id", user.id)
-        .single()
-        .then(({ data }) => {
-          if (active && data?.city) setValue("city", data.city);
-        });
-    });
-    return () => {
-      active = false;
-    };
-  }, [open, setValue]);
+    if (!open || !user?.city) return;
+    setValue("city", user.city);
+  }, [open, user, setValue]);
 
   useEffect(() => {
     if (!open) return;
@@ -174,82 +163,69 @@ export default function CreateListingModal({
     setSubmitting(true);
     setServerError(null);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
     if (!user) {
       setSubmitting(false);
       toast.error("You must be signed in to create a listing.");
       return;
     }
 
-    const { data: created, error } = await supabase
-      .from("listings")
-      .insert({
+    try {
+      const { id: listingId } = await createListingRequest({
         title: values.title.trim(),
         description: values.description.trim(),
         price: Number(values.price),
         city: values.city.trim(),
-        category_id: Number(values.categoryId),
-        user_id: user.id,
-        status: "active",
-      })
-      .select("id")
-      .single();
-
-    if (error || !created) {
-      setSubmitting(false);
-      toast.error(error?.message ?? "Could not create listing.");
-      return;
-    }
-
-    if (images.length > 0) {
-      const ordered = [...images].sort((a, b) => {
-        if (a.id === mainId) return -1;
-        if (b.id === mainId) return 1;
-        return 0;
+        categoryId: Number(values.categoryId),
       });
 
-      const rows: { listing_id: string; url: string; position: number }[] = [];
+      if (images.length > 0) {
+        const ordered = [...images].sort((a, b) => {
+          if (a.id === mainId) return -1;
+          if (b.id === mainId) return 1;
+          return 0;
+        });
 
-      for (let i = 0; i < ordered.length; i++) {
-        const { blob, ext, type } = await compressImage(ordered[i].file);
-        const path = `${user.id}/${created.id}/${i}-${Date.now()}.${ext}`;
+        const rows: { url: string; position: number }[] = [];
 
-        const { error: uploadError } = await supabase.storage
-          .from(BUCKET)
-          .upload(path, blob, { contentType: type, upsert: false });
+        for (let i = 0; i < ordered.length; i++) {
+          const { blob, ext, type } = await compressImage(ordered[i].file);
+          const path = `${user.id}/${listingId}/${i}-${Date.now()}.${ext}`;
 
-        if (uploadError) {
-          setSubmitting(false);
-          toast.error(uploadError.message);
-          return;
+          const { error: uploadError } = await supabase.storage
+            .from(BUCKET)
+            .upload(path, blob, { contentType: type, upsert: false });
+
+          if (uploadError) throw new Error(uploadError.message);
+
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from(BUCKET).getPublicUrl(path);
+          rows.push({ url: publicUrl, position: i });
         }
 
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from(BUCKET).getPublicUrl(path);
-        rows.push({ listing_id: created.id, url: publicUrl, position: i });
+        await updateListingRequest(listingId, {
+          title: values.title.trim(),
+          description: values.description.trim(),
+          price: Number(values.price),
+          city: values.city.trim(),
+          categoryId: Number(values.categoryId),
+          images: rows,
+        });
       }
 
-      const { error: imageError } = await supabase
-        .from("listing_images")
-        .insert(rows);
-      if (imageError) {
-        setSubmitting(false);
-        toast.error(imageError.message);
-        return;
-      }
+      clearListingsCache();
+      clearImages();
+      reset();
+      setSubmitting(false);
+      toast.success("Listing created.");
+      onClose();
+      navigate(`/listings/${listingId}`);
+    } catch (err) {
+      setSubmitting(false);
+      toast.error(
+        err instanceof Error ? err.message : "Could not create listing.",
+      );
     }
-
-    clearListingsCache();
-    clearImages();
-    reset();
-    setSubmitting(false);
-    toast.success("Listing created.");
-    onClose();
-    navigate(`/listings/${created.id}`);
   };
 
   return (
