@@ -27,6 +27,22 @@ export async function findUserById(id: string): Promise<User | null> {
   return result.rows[0] ?? null;
 }
 
+export interface PublicUserProfile {
+  id: string;
+  name: string | null;
+  avatarUrl: string | null;
+}
+
+export async function findPublicUserById(
+  id: string,
+): Promise<PublicUserProfile | null> {
+  const result = await pool.query<PublicUserProfile>(
+    `SELECT id, name, avatar_url AS "avatarUrl" FROM users WHERE id = $1`,
+    [id],
+  );
+  return result.rows[0] ?? null;
+}
+
 export async function createUser(params: {
   email: string;
   passwordHash: string;
