@@ -1,20 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
 import { useForm } from "react-hook-form";
-import { supabase } from "../../lib/supabase";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import {
   fetchCategories,
   fetchListing,
   updateListingRequest,
 } from "../../lib/listings/listingsApi";
+import { uploadImage, deleteImages } from "../../lib/uploads/uploadsApi";
 import { clearListingsCache } from "./useListings";
 import { useToast } from "../../components/Toast/useToast";
-import {
-  LISTING_IMAGES_BUCKET as BUCKET,
-  compressImage,
-  pathFromListingImageUrl as pathFromUrl,
-} from "./listingImages";
+import { compressImage } from "./listingImages";
 import styles from "./CreateListingModal.module.css";
 
 const MAX_IMAGES = 5;
@@ -242,16 +238,10 @@ export default function EditListingModal({
           rows.push({ url: img.url, position: i });
           continue;
         }
-        const { blob, ext, type } = await compressImage(img.file);
-        const path = `${userId}/${listingId}/${i}-${Date.now()}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from(BUCKET)
-          .upload(path, blob, { contentType: type, upsert: false });
-        if (uploadError) throw new Error(uploadError.message);
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from(BUCKET).getPublicUrl(path);
-        rows.push({ url: publicUrl, position: i });
+        const { blob, ext } = await compressImage(img.file);
+        const filename = `${i}-${Date.now()}.${ext}`;
+        const url = await uploadImage(blob, filename);
+        rows.push({ url, position: i });
       }
 
       await updateListingRequest(listingId, {
@@ -268,13 +258,12 @@ export default function EditListingModal({
           .filter((img): img is ExistingImage => img.kind === "existing")
           .map((img) => img.id),
       );
-      const removedPaths = originalRef.current
+      const removedUrls = originalRef.current
         .filter((o) => !keptIds.has(o.id))
-        .map((o) => pathFromUrl(o.url))
-        .filter((p): p is string => !!p);
+        .map((o) => o.url);
 
-      if (removedPaths.length > 0) {
-        await supabase.storage.from(BUCKET).remove(removedPaths);
+      if (removedUrls.length > 0) {
+        await deleteImages(removedUrls);
       }
 
       clearListingsCache();

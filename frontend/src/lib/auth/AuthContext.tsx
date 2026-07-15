@@ -2,12 +2,12 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import {
   registerRequest,
   loginRequest,
-  refreshRequest,
   logoutRequest,
   meRequest,
   type PublicUser,
 } from "./authApi";
 import { getRefreshToken, setTokens, clearTokens } from "./tokenStorage";
+import { refreshAccessToken } from "../api/client";
 import { AuthContext } from "./authContext";
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
@@ -18,16 +18,19 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     let active = true;
 
     const restore = async () => {
-      const refreshToken = getRefreshToken();
-      if (!refreshToken) {
+      if (!getRefreshToken()) {
+        if (active) setReady(true);
+        return;
+      }
+
+      const accessToken = await refreshAccessToken();
+      if (!accessToken) {
         if (active) setReady(true);
         return;
       }
 
       try {
-        const tokens = await refreshRequest(refreshToken);
-        setTokens(tokens.accessToken, tokens.refreshToken);
-        const { user: currentUser } = await meRequest(tokens.accessToken);
+        const { user: currentUser } = await meRequest(accessToken);
         if (active) setUser(currentUser);
       } catch {
         clearTokens();

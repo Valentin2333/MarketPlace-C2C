@@ -10,7 +10,7 @@ const API_URL = import.meta.env.VITE_API_URL as string;
 
 let refreshPromise: Promise<string | null> | null = null;
 
-async function refreshAccessToken(): Promise<string | null> {
+export async function refreshAccessToken(): Promise<string | null> {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return null;
 
@@ -38,7 +38,11 @@ export async function apiFetch(
 ): Promise<Response> {
   const token = getAccessToken();
   const headers = new Headers(init.headers);
-  if (!headers.has("Content-Type") && init.body) {
+  if (
+    !headers.has("Content-Type") &&
+    init.body &&
+    !(init.body instanceof FormData)
+  ) {
     headers.set("Content-Type", "application/json");
   }
   if (token) headers.set("Authorization", `Bearer ${token}`);

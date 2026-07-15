@@ -1,5 +1,5 @@
-const MAX_DIM = 1600;
-const QUALITY = 0.8;
+const MAX_DIM = 1280;
+const QUALITY = 0.72;
 
 export const LISTING_IMAGES_BUCKET = "listing-images";
 
