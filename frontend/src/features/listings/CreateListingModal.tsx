@@ -2,16 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth/useAuth";
 import {
   fetchCategories,
   createListingRequest,
   updateListingRequest,
 } from "../../lib/listings/listingsApi";
+import { uploadImage } from "../../lib/uploads/uploadsApi";
 import { clearListingsCache } from "./useListings";
 import { useToast } from "../../components/Toast/useToast";
-import { LISTING_IMAGES_BUCKET as BUCKET, compressImage } from "./listingImages";
+import { compressImage } from "./listingImages";
 import styles from "./CreateListingModal.module.css";
 
 const MAX_IMAGES = 5;
@@ -188,19 +188,10 @@ export default function CreateListingModal({
         const rows: { url: string; position: number }[] = [];
 
         for (let i = 0; i < ordered.length; i++) {
-          const { blob, ext, type } = await compressImage(ordered[i].file);
-          const path = `${user.id}/${listingId}/${i}-${Date.now()}.${ext}`;
-
-          const { error: uploadError } = await supabase.storage
-            .from(BUCKET)
-            .upload(path, blob, { contentType: type, upsert: false });
-
-          if (uploadError) throw new Error(uploadError.message);
-
-          const {
-            data: { publicUrl },
-          } = supabase.storage.from(BUCKET).getPublicUrl(path);
-          rows.push({ url: publicUrl, position: i });
+          const { blob, ext } = await compressImage(ordered[i].file);
+          const filename = `${i}-${Date.now()}.${ext}`;
+          const url = await uploadImage(blob, filename);
+          rows.push({ url, position: i });
         }
 
         await updateListingRequest(listingId, {

@@ -6,6 +6,7 @@ import {
   deleteListingRequest,
   type ListingDetail,
 } from "../../lib/listings/listingsApi";
+import { deleteImages } from "../../lib/uploads/uploadsApi";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { formatPrice, formatDate } from "../../lib/format";
 import { clearListingsCache } from "./useListings";
@@ -14,10 +15,6 @@ import EditListingModal from "./EditListingModal";
 import ConfirmModal from "./ConfirmModal";
 import ReportListingModal from "./ReportListingModal";
 import FavoriteButton from "../../components/Favorites/FavoriteButton";
-import {
-  LISTING_IMAGES_BUCKET as BUCKET,
-  pathFromListingImageUrl as pathFromUrl,
-} from "./listingImages";
 
 import styles from "./ListingDetailPage.module.css";
 
@@ -74,9 +71,7 @@ export default function ListingDetailPage() {
 
     setDeleting(true);
 
-    const paths = (listing.listing_images ?? [])
-      .map((img) => pathFromUrl(img.url))
-      .filter((p): p is string => !!p);
+    const urls = (listing.listing_images ?? []).map((img) => img.url);
 
     try {
       await deleteListingRequest(listing.id);
@@ -87,8 +82,8 @@ export default function ListingDetailPage() {
       return;
     }
 
-    if (paths.length > 0) {
-      await supabase.storage.from(BUCKET).remove(paths);
+    if (urls.length > 0) {
+      await deleteImages(urls).catch(() => {});
     }
 
     setDeleting(false);
