@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../lib/auth/useAuth";
+import {
+  fetchFavoriteIds,
+  addFavoriteRequest,
+  removeFavoriteRequest,
+} from "../../lib/favorites/favoritesApi";
 import { FavoritesContext } from "./favorites-context";
 import type { FavoritesApi } from "./favorites-context";
 
@@ -9,87 +14,74 @@ export default function FavoritesProvider({
 }: {
   children: ReactNode;
 }) {
-  const [userId, setUserId] = useState<string | null>(null);
+  const { user, ready: authReady } = useAuth();
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    if (!authReady) return;
     let active = true;
 
-    const loadFor = async (uid: string | null) => {
-      if (!uid) {
+    const load = async () => {
+      if (!user) {
         if (active) {
           setFavoriteIds([]);
           setReady(true);
         }
         return;
       }
-      const { data } = await supabase
-        .from("favorites")
-        .select("listing_id, created_at")
-        .eq("user_id", uid)
-        .order("created_at", { ascending: false });
-      if (!active) return;
-      setFavoriteIds(
-        ((data ?? []) as { listing_id: string }[]).map((r) => r.listing_id),
-      );
-      setReady(true);
+
+      if (active) setReady(false);
+
+      try {
+        const ids = await fetchFavoriteIds();
+        if (active) {
+          setFavoriteIds(ids);
+          setReady(true);
+        }
+      } catch {
+        if (active) setReady(true);
+      }
     };
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const uid = session?.user?.id ?? null;
-      setUserId(uid);
-      loadFor(uid);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      const uid = session?.user?.id ?? null;
-      setUserId(uid);
-      setReady(false);
-      loadFor(uid);
-    });
+    load();
 
     return () => {
       active = false;
-      subscription.unsubscribe();
     };
-  }, []);
+  }, [authReady, user?.id]);
 
   const api = useMemo<FavoritesApi>(() => {
     const set = new Set(favoriteIds);
     return {
       favoriteIds,
       isFavorite: (listingId: string) => set.has(listingId),
-      isLoggedIn: !!userId,
+      isLoggedIn: !!user,
       ready,
       toggleFavorite: async (listingId: string) => {
-        if (!userId) return;
+        if (!user) return;
         const wasFav = set.has(listingId);
         setFavoriteIds((prev) =>
           wasFav ? prev.filter((x) => x !== listingId) : [listingId, ...prev],
         );
 
-        const { error } = wasFav
-          ? await supabase
-              .from("favorites")
-              .delete()
-              .eq("user_id", userId)
-              .eq("listing_id", listingId)
-          : await supabase
-              .from("favorites")
-              .insert({ user_id: userId, listing_id: listingId });
-
-        if (error) {
+        try {
+          if (wasFav) {
+            await removeFavoriteRequest(listingId);
+          } else {
+            await addFavoriteRequest(listingId);
+          }
+        } catch (err) {
           setFavoriteIds((prev) =>
-            wasFav ? [listingId, ...prev] : prev.filter((x) => x !== listingId),
+            wasFav
+              ? [listingId, ...prev]
+              : prev.filter((x) => x !== listingId),
           );
-          throw error;
+          throw err;
         }
       },
     };
-  }, [favoriteIds, userId, ready]);
+  }, [favoriteIds, user, ready]);
 
   return (
     <FavoritesContext.Provider value={api}>

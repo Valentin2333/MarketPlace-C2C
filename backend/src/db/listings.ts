@@ -30,6 +30,7 @@ export interface ListingDetailRow {
 export interface ListingFilters {
   status?: string;
   userId?: string;
+  ids?: string[];
   q?: string;
   categoryId?: number;
   city?: string;
@@ -53,8 +54,15 @@ export async function listListings(
 
   if (filters.userId) {
     conditions.push(`l.user_id = ${addParam(filters.userId)}`);
-  } else {
+  } else if (!filters.ids) {
     conditions.push(`l.status = ${addParam(filters.status ?? "active")}`);
+  }
+
+  if (filters.ids) {
+    if (filters.ids.length === 0) {
+      return { rows: [], total: 0 };
+    }
+    conditions.push(`l.id = ANY(${addParam(filters.ids)})`);
   }
 
   if (filters.q) {

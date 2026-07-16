@@ -1,21 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../../lib/supabase'
+import { fetchListings, type ListingSummary } from '../../lib/listings/listingsApi'
 import { useFavorites } from '../../components/Favorites/useFavorites'
 import ListingCard from '../../components/ListingCard/ListingCard'
 import styles from './FavoritesPage.module.css'
 
-type FavoriteListing = {
-  id: string
-  title: string
-  price: number | null
-  city: string | null
-  listing_images: { url: string }[] | null
-}
-
 export default function FavoritesPage() {
   const { favoriteIds, isFavorite, isLoggedIn, ready } = useFavorites()
-  const [listings, setListings] = useState<FavoriteListing[]>([])
+  const [listings, setListings] = useState<ListingSummary[]>([])
   const [loading, setLoading] = useState(true)
 
   const favoriteIdsRef = useRef(favoriteIds)
@@ -41,13 +33,9 @@ export default function FavoritesPage() {
     setLoading(true)
 
     const load = async () => {
-      const { data } = await supabase
-        .from('listings')
-        .select('id, title, price, city, listing_images ( url, position )')
-        .in('id', ids)
-        .order('position', { referencedTable: 'listing_images', ascending: true })
+      const { listings: rows } = await fetchListings({ ids })
       if (!active) return
-      setListings((data ?? []) as unknown as FavoriteListing[])
+      setListings(rows)
       setLoading(false)
     }
 
