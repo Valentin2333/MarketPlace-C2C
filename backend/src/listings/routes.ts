@@ -43,7 +43,7 @@ router.get("/cities", async (_req, res) => {
 });
 
 router.get("/", async (req, res) => {
-  const { q, category, city, min, max, sort, userId, limit, offset } =
+  const { q, category, city, min, max, sort, userId, ids, limit, offset } =
     req.query;
 
   const { rows, total } = await listListings({
@@ -54,6 +54,10 @@ router.get("/", async (req, res) => {
     maxPrice: parseNumber(max),
     sort: parseSort(sort),
     userId: typeof userId === "string" ? userId : undefined,
+    ids:
+      typeof ids === "string"
+        ? ids.split(",").filter((id) => id.length > 0)
+        : undefined,
     limit: parseNumber(limit),
     offset: parseNumber(offset) ?? 0,
   });

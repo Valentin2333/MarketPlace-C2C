@@ -33,6 +33,7 @@ export type ListingFilters = {
   max?: string;
   sort?: "newest" | "oldest" | "price_asc" | "price_desc";
   userId?: string;
+  ids?: string[];
   limit?: number;
   offset?: number;
 };
@@ -46,6 +47,7 @@ function buildQuery(filters: ListingFilters): string {
   if (filters.max) params.set("max", filters.max);
   if (filters.sort) params.set("sort", filters.sort);
   if (filters.userId) params.set("userId", filters.userId);
+  if (filters.ids) params.set("ids", filters.ids.join(","));
   if (filters.limit !== undefined) params.set("limit", String(filters.limit));
   if (filters.offset !== undefined)
     params.set("offset", String(filters.offset));
