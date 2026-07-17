@@ -30,15 +30,45 @@ export async function findUserById(id: string): Promise<User | null> {
 export interface PublicUserProfile {
   id: string;
   name: string | null;
+  city: string | null;
   avatarUrl: string | null;
+  role: string;
 }
 
 export async function findPublicUserById(
   id: string,
 ): Promise<PublicUserProfile | null> {
   const result = await pool.query<PublicUserProfile>(
-    `SELECT id, name, avatar_url AS "avatarUrl" FROM users WHERE id = $1`,
+    `SELECT id, name, city, avatar_url AS "avatarUrl", role FROM users WHERE id = $1`,
     [id],
+  );
+  return result.rows[0] ?? null;
+}
+
+export interface UpdateOwnProfileInput {
+  name?: string;
+  city?: string | null;
+  avatarUrl?: string;
+}
+
+export async function updateOwnProfile(
+  userId: string,
+  input: UpdateOwnProfileInput,
+): Promise<PublicUserProfile | null> {
+  const result = await pool.query<PublicUserProfile>(
+    `UPDATE users
+     SET name = COALESCE($1, name),
+         city = CASE WHEN $2 THEN $3 ELSE city END,
+         avatar_url = COALESCE($4, avatar_url)
+     WHERE id = $5
+     RETURNING id, name, city, avatar_url AS "avatarUrl", role`,
+    [
+      input.name ?? null,
+      input.city !== undefined,
+      input.city ?? null,
+      input.avatarUrl ?? null,
+      userId,
+    ],
   );
   return result.rows[0] ?? null;
 }
