@@ -4,6 +4,10 @@ import { useForm } from "react-hook-form";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useCurrentUser } from "../../lib/useCurrentUser";
+import { useAuth } from "../../lib/auth/useAuth";
+import { requestPasswordResetRequest } from "../../lib/auth/authApi";
+import { fetchPublicUser, updateOwnProfile } from "../../lib/users/usersApi";
+import { uploadImage, deleteImages } from "../../lib/uploads/uploadsApi";
 import { useToast } from "../../components/Toast/useToast";
 import ConfirmModal from "../listings/ConfirmModal";
 import ReportUserModal from "./ReportUserModal";
@@ -33,6 +37,7 @@ export default function ProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const toast = useToast();
+  const { logout } = useAuth();
 
   const {
     userId: currentUserId,
@@ -81,15 +86,11 @@ export default function ProfilePage() {
       setServerError(null);
       setPwMsg(null);
 
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, name, city, avatar_url, role")
-        .eq("id", id)
-        .maybeSingle();
+      const data = await fetchPublicUser(id);
 
       if (!active) return;
 
-      if (error || !data) {
+      if (!data) {
         setNotFound(true);
         setProfile(null);
       } else {
@@ -114,18 +115,17 @@ export default function ProfilePage() {
     const name = values.name.trim();
     const city = values.city.trim() || null;
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({ name, city })
-      .eq("id", id);
-
-    setSaving(false);
-
-    if (error) {
-      setServerError(error.message);
+    try {
+      await updateOwnProfile({ name, city });
+    } catch (err) {
+      setSaving(false);
+      setServerError(
+        err instanceof Error ? err.message : "Could not save profile.",
+      );
       return;
     }
 
+    setSaving(false);
     setProfile((prev) => (prev ? { ...prev, name, city } : prev));
     setSaveMsg("Profile updated.");
   };
@@ -147,39 +147,28 @@ export default function ProfilePage() {
     setServerError(null);
     setSaveMsg(null);
 
-    const path = `${id}/avatar`;
+    const previousUrl = profile?.avatar_url ?? null;
 
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(path, file, { upsert: true, contentType: file.type });
+    try {
+      const url = await uploadImage(file, file.name);
+      const updated = await updateOwnProfile({ avatarUrl: url });
 
-    if (uploadError) {
+      if (previousUrl) {
+        await deleteImages([previousUrl]).catch(() => {});
+      }
+
+      setProfile((prev) =>
+        prev ? { ...prev, avatar_url: updated.avatar_url } : prev,
+      );
+      setSaveMsg("Avatar updated.");
+    } catch (err) {
+      setServerError(
+        err instanceof Error ? err.message : "Could not update avatar.",
+      );
+    } finally {
       setUploading(false);
-      setServerError(uploadError.message);
-      return;
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("avatars").getPublicUrl(path);
-
-    const bustedUrl = `${publicUrl}?v=${Date.now()}`;
-
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({ avatar_url: bustedUrl })
-      .eq("id", id);
-
-    setUploading(false);
-
-    if (updateError) {
-      setServerError(updateError.message);
-      return;
-    }
-
-    setProfile((prev) => (prev ? { ...prev, avatar_url: bustedUrl } : prev));
-    setSaveMsg("Avatar updated.");
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const onChangePassword = async () => {
@@ -188,24 +177,22 @@ export default function ProfilePage() {
     setPwMsg(null);
     setServerError(null);
 
-    const { error } = await supabase.auth.resetPasswordForEmail(
-      currentUserEmail,
-      {
-        redirectTo: `${window.location.origin}/reset-password`,
-      },
-    );
-
-    setPwSending(false);
-
-    if (error) {
-      setServerError(error.message);
+    try {
+      await requestPasswordResetRequest(currentUserEmail);
+    } catch (err) {
+      setPwSending(false);
+      setServerError(
+        err instanceof Error ? err.message : "Could not send reset email.",
+      );
       return;
     }
+
+    setPwSending(false);
     setPwMsg(`We've sent a password reset link to ${currentUserEmail}.`);
   };
 
   const onLogout = async () => {
-    await supabase.auth.signOut();
+    await logout();
     navigate("/");
   };
 
