@@ -24,3 +24,11 @@ export async function removeUploadedFiles(keys: string[]): Promise<void> {
   if (keys.length === 0) return;
   await pool.query("DELETE FROM uploaded_files WHERE key = ANY($1)", [keys]);
 }
+
+export async function listUserFileKeys(userId: string): Promise<string[]> {
+  const result = await pool.query<{ key: string }>(
+    "SELECT key FROM uploaded_files WHERE user_id = $1",
+    [userId],
+  );
+  return result.rows.map((r) => r.key);
+}

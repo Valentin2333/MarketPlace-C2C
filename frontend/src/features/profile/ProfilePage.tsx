@@ -6,19 +6,18 @@ import { supabase } from "../../lib/supabase";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { useAuth } from "../../lib/auth/useAuth";
 import { requestPasswordResetRequest } from "../../lib/auth/authApi";
-import { fetchPublicUser, updateOwnProfile } from "../../lib/users/usersApi";
+import {
+  fetchPublicUser,
+  updateOwnProfile,
+  deleteOwnAccount,
+  updateUserRole,
+} from "../../lib/users/usersApi";
 import { uploadImage, deleteImages } from "../../lib/uploads/uploadsApi";
 import { useToast } from "../../components/Toast/useToast";
 import ConfirmModal from "../listings/ConfirmModal";
 import ReportUserModal from "./ReportUserModal";
 import { clearListingsCache } from "../listings/useListings";
-import {
-  LISTING_IMAGES_BUCKET as LISTING_BUCKET,
-  pathFromListingImageUrl,
-} from "../listings/listingImages";
 import styles from "./ProfilePage.module.css";
-
-const AVATAR_BUCKET = "avatars";
 
 type Profile = {
   id: string;
@@ -200,35 +199,19 @@ export default function ProfilePage() {
     if (!isOwner || !id) return;
     setDeletingAccount(true);
 
-    const { data: ownListings } = await supabase
-      .from("listings")
-      .select("listing_images ( url )")
-      .eq("user_id", id);
-
-    const imagePaths = ((ownListings ?? []) as {
-      listing_images: { url: string }[] | null;
-    }[])
-      .flatMap((l) => l.listing_images ?? [])
-      .map((img) => pathFromListingImageUrl(img.url))
-      .filter((p): p is string => !!p);
-
-    if (imagePaths.length > 0) {
-      await supabase.storage.from(LISTING_BUCKET).remove(imagePaths);
-    }
-
-    await supabase.storage.from(AVATAR_BUCKET).remove([`${id}/avatar`]);
-
-    const { error } = await supabase.rpc("delete_own_account");
-
-    if (error) {
+    try {
+      await deleteOwnAccount();
+    } catch (err) {
       setDeletingAccount(false);
       setDeleteAccountOpen(false);
-      toast.error(error.message);
+      toast.error(
+        err instanceof Error ? err.message : "Could not delete account.",
+      );
       return;
     }
 
     clearListingsCache();
-    await supabase.auth.signOut();
+    await logout();
     toast.success("Your account has been deleted.");
     navigate("/");
   };
@@ -240,26 +223,24 @@ export default function ProfilePage() {
     if (!canBan || !id || !profile) return;
     setBanning(true);
 
-    const newRole = profile.role === "banned" ? null : "banned";
+    const newRole: "user" | "banned" =
+      profile.role === "banned" ? "user" : "banned";
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({ role: newRole })
-      .eq("id", id);
-
-    setBanning(false);
-
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      const updated = await updateUserRole(id, newRole);
+      setBanning(false);
+      setProfile((prev) => (prev ? { ...prev, role: updated.role } : prev));
+      toast.success(
+        newRole === "banned"
+          ? `${profile.name || "User"} has been banned.`
+          : `${profile.name || "User"} has been unbanned.`,
+      );
+    } catch (err) {
+      setBanning(false);
+      toast.error(
+        err instanceof Error ? err.message : "Could not update user role.",
+      );
     }
-
-    setProfile((prev) => (prev ? { ...prev, role: newRole } : prev));
-    toast.success(
-      newRole === "banned"
-        ? `${profile.name || "User"} has been banned.`
-        : `${profile.name || "User"} has been unbanned.`,
-    );
   };
 
   const handleReportUser = async (reason: string) => {
