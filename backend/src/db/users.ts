@@ -73,6 +73,22 @@ export async function updateOwnProfile(
   return result.rows[0] ?? null;
 }
 
+export async function updateUserRole(
+  userId: string,
+  role: "user" | "banned",
+): Promise<PublicUserProfile | null> {
+  const result = await pool.query<PublicUserProfile>(
+    `UPDATE users SET role = $1 WHERE id = $2
+     RETURNING id, name, city, avatar_url AS "avatarUrl", role`,
+    [role, userId],
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function deleteUser(userId: string): Promise<void> {
+  await pool.query("DELETE FROM users WHERE id = $1", [userId]);
+}
+
 export async function createUser(params: {
   email: string;
   passwordHash: string;

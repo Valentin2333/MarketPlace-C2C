@@ -54,3 +54,26 @@ export async function updateOwnProfile(
   }
   return mapUser((body as { user: UserApiResponse }).user);
 }
+
+export async function deleteOwnAccount(): Promise<void> {
+  const response = await apiFetch("/users/me", { method: "DELETE" });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error ?? "Could not delete account");
+  }
+}
+
+export async function updateUserRole(
+  userId: string,
+  role: "user" | "banned",
+): Promise<PublicUser> {
+  const response = await apiFetch(`/users/${userId}/role`, {
+    method: "PATCH",
+    body: JSON.stringify({ role }),
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(body?.error ?? "Could not update user role");
+  }
+  return mapUser((body as { user: UserApiResponse }).user);
+}

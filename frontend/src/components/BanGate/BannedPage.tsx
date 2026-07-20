@@ -1,9 +1,11 @@
-import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../lib/auth/useAuth";
 import styles from "./BannedPage.module.css";
 
 export default function BannedPage() {
+  const { logout } = useAuth();
+
   const onLogout = async () => {
-    await supabase.auth.signOut();
+    await logout();
     window.location.href = "/login";
   };
 
