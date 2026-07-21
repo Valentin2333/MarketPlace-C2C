@@ -6,6 +6,7 @@ import categoriesRouter from "./categories/routes.js";
 import usersRouter from "./users/routes.js";
 import uploadsRouter from "./uploads/routes.js";
 import favoritesRouter from "./favorites/routes.js";
+import adminRouter from "./admin/routes.js";
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use("/categories", categoriesRouter);
 app.use("/users", usersRouter);
 app.use("/uploads", uploadsRouter);
 app.use("/favorites", favoritesRouter);
+app.use("/admin", adminRouter);
 
 app.use(
   (

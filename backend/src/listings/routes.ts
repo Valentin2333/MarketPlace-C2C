@@ -9,6 +9,7 @@ import {
   getListingOwnerId,
   listActiveCities,
 } from "../db/listings.js";
+import { createListingReport } from "../db/reports.js";
 import {
   requireAuth,
   type AuthenticatedRequest,
@@ -185,5 +186,29 @@ router.delete("/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
   await deleteListing(paramId(req));
   res.status(204).send();
 });
+
+router.post(
+  "/:id/reports",
+  requireAuth,
+  async (req: AuthenticatedRequest, res) => {
+    const { reason } = req.body ?? {};
+    if (typeof reason !== "string" || !reason.trim()) {
+      res.status(400).json({ error: "A reason is required" });
+      return;
+    }
+
+    const { duplicate } = await createListingReport(
+      paramId(req),
+      req.user!.id,
+      reason,
+    );
+    if (duplicate) {
+      res.status(409).json({ error: "You've already reported this listing." });
+      return;
+    }
+
+    res.status(201).send();
+  },
+);
 
 export default router;
