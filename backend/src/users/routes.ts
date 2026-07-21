@@ -6,6 +6,7 @@ import {
   updateUserRole,
   deleteUser,
 } from "../db/users.js";
+import { createUserReport } from "../db/userReports.js";
 import { listUserFileKeys, removeUploadedFiles } from "../db/uploadedFiles.js";
 import { r2Client, R2_BUCKET_NAME } from "../storage/r2.js";
 import {
@@ -112,5 +113,29 @@ router.get("/:id", async (req, res) => {
   }
   res.json({ user });
 });
+
+router.post(
+  "/:id/reports",
+  requireAuth,
+  async (req: AuthenticatedRequest, res) => {
+    const { reason } = req.body ?? {};
+    if (typeof reason !== "string" || !reason.trim()) {
+      res.status(400).json({ error: "A reason is required" });
+      return;
+    }
+
+    const { duplicate } = await createUserReport(
+      paramId(req),
+      req.user!.id,
+      reason,
+    );
+    if (duplicate) {
+      res.status(409).json({ error: "You've already reported this user." });
+      return;
+    }
+
+    res.status(201).send();
+  },
+);
 
 export default router;
