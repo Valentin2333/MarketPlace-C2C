@@ -77,3 +77,17 @@ export async function updateUserRole(
   }
   return mapUser((body as { user: UserApiResponse }).user);
 }
+
+export async function reportUserRequest(
+  userId: string,
+  reason: string,
+): Promise<void> {
+  const response = await apiFetch(`/users/${userId}/reports`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error ?? "Could not report user");
+  }
+}

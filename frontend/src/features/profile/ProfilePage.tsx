@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { useAuth } from "../../lib/auth/useAuth";
 import { requestPasswordResetRequest } from "../../lib/auth/authApi";
@@ -11,6 +10,7 @@ import {
   updateOwnProfile,
   deleteOwnAccount,
   updateUserRole,
+  reportUserRequest,
 } from "../../lib/users/usersApi";
 import { uploadImage, deleteImages } from "../../lib/uploads/uploadsApi";
 import { useToast } from "../../components/Toast/useToast";
@@ -247,25 +247,21 @@ export default function ProfilePage() {
     if (!id || !currentUserId) return;
     setReporting(true);
 
-    const { error } = await supabase.from("user_reports").insert({
-      reported_id: id,
-      reporter_id: currentUserId,
-      reason,
-    });
-
-    setReporting(false);
-    setReportOpen(false);
-
-    if (error) {
-      if (error.code === "23505") {
-        toast.info("You’ve already reported this user.");
-        return;
+    try {
+      await reportUserRequest(id, reason);
+      toast.success("Thanks - we’ll review this profile.");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Could not report this user.";
+      if (message.includes("already reported")) {
+        toast.info(message);
+      } else {
+        toast.error(message);
       }
-      toast.error(error.message);
-      return;
+    } finally {
+      setReporting(false);
+      setReportOpen(false);
     }
-
-    toast.success("Thanks - we’ll review this profile.");
   };
 
   const initials = (profile?.name ?? "?")

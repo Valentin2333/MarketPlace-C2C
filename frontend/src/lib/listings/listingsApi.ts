@@ -183,3 +183,14 @@ export async function deleteListingRequest(id: string): Promise<void> {
   const response = await apiFetch(`/listings/${id}`, { method: "DELETE" });
   await throwIfNotOk(response);
 }
+
+export async function reportListingRequest(
+  listingId: string,
+  reason: string,
+): Promise<void> {
+  const response = await apiFetch(`/listings/${listingId}/reports`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+  await throwIfNotOk(response);
+}
