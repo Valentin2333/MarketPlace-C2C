@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
 import {
   fetchListing,
   deleteListingRequest,
+  reportListingRequest,
   type ListingDetail,
 } from "../../lib/listings/listingsApi";
 import { deleteImages } from "../../lib/uploads/uploadsApi";
@@ -124,25 +124,21 @@ export default function ListingDetailPage() {
     if (!listing || !currentUserId) return;
     setReporting(true);
 
-    const { error } = await supabase.from("reports").insert({
-      listing_id: listing.id,
-      reporter_id: currentUserId,
-      reason,
-    });
-
-    setReporting(false);
-    setReportOpen(false);
-
-    if (error) {
-      if (error.code === "23505") {
-        toast.info("You’ve already reported this listing.");
-        return;
+    try {
+      await reportListingRequest(listing.id, reason);
+      toast.success("Thanks - we’ll review this listing.");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Could not report this listing.";
+      if (message.includes("already reported")) {
+        toast.info(message);
+      } else {
+        toast.error(message);
       }
-      toast.error(error.message);
-      return;
+    } finally {
+      setReporting(false);
+      setReportOpen(false);
     }
-
-    toast.success("Thanks - we’ll review this listing.");
   };
 
   return (

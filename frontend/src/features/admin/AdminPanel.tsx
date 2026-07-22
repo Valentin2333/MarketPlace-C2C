@@ -1,19 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { useToast } from "../../components/Toast/useToast";
 import { useReports } from "../../components/Reports/useReports";
 import { useUserReports } from "../../components/UserReports/useUserReports";
+import {
+  fetchAdminUsers,
+  searchAdminUsers,
+  dismissListingReports,
+  dismissUserReports,
+  type AdminUser,
+} from "../../lib/admin/adminApi";
+import { updateUserRole } from "../../lib/users/usersApi";
 import ConfirmModal from "../listings/ConfirmModal";
 import styles from "./AdminPanel.module.css";
 
-type UserLite = {
-  id: string;
-  email: string;
-  role: string | null;
-  reported: boolean;
-};
+type UserLite = AdminUser;
 
 type UserFilter = "all" | "reported" | "banned";
 
@@ -81,19 +83,17 @@ export default function AdminPanel() {
     if (!confirmListingId) return;
     setDeletingReports(true);
 
-    const { error } = await supabase
-      .from("reports")
-      .update({ dismissed: true })
-      .eq("listing_id", confirmListingId)
-      .eq("dismissed", false);
+    try {
+      await dismissListingReports(confirmListingId);
+    } catch (err) {
+      setDeletingReports(false);
+      setConfirmListingId(null);
+      toast.error(err instanceof Error ? err.message : "Could not delete reports.");
+      return;
+    }
 
     setDeletingReports(false);
     setConfirmListingId(null);
-
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
 
     await refresh();
     toast.success("Reports deleted.");
@@ -103,19 +103,17 @@ export default function AdminPanel() {
     if (!confirmReportedUserId) return;
     setDeletingUserReports(true);
 
-    const { error } = await supabase
-      .from("user_reports")
-      .update({ dismissed: true })
-      .eq("reported_id", confirmReportedUserId)
-      .eq("dismissed", false);
+    try {
+      await dismissUserReports(confirmReportedUserId);
+    } catch (err) {
+      setDeletingUserReports(false);
+      setConfirmReportedUserId(null);
+      toast.error(err instanceof Error ? err.message : "Could not delete reports.");
+      return;
+    }
 
     setDeletingUserReports(false);
     setConfirmReportedUserId(null);
-
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
 
     await refreshUserReports();
     toast.success("Reports deleted.");
@@ -138,14 +136,7 @@ export default function AdminPanel() {
       loadingRef.current = true;
       setLoadingUsers(true);
 
-      const { data, error } = await supabase.rpc("admin_list_users_filtered", {
-        p_limit: PAGE_SIZE,
-        p_offset: offsetRef.current,
-        p_filter: filter,
-      });
-
-      if (error) {
-        toast.error(error.message);
+      if (filter === "reported") {
         hasMoreRef.current = false;
         setHasMore(false);
         setLoadingUsers(false);
@@ -153,15 +144,27 @@ export default function AdminPanel() {
         return;
       }
 
-      const rows = (data ?? []) as UserLite[];
+      try {
+        const rows = await fetchAdminUsers(
+          filter,
+          PAGE_SIZE,
+          offsetRef.current,
+        );
 
-      setUsers((prev) => [...prev, ...rows]);
-      offsetRef.current += rows.length;
-      hasMoreRef.current = rows.length === PAGE_SIZE;
-      setHasMore(hasMoreRef.current);
-
-      setLoadingUsers(false);
-      loadingRef.current = false;
+        setUsers((prev) => [...prev, ...rows]);
+        offsetRef.current += rows.length;
+        hasMoreRef.current = rows.length === PAGE_SIZE;
+        setHasMore(hasMoreRef.current);
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Could not load users.",
+        );
+        hasMoreRef.current = false;
+        setHasMore(false);
+      } finally {
+        setLoadingUsers(false);
+        loadingRef.current = false;
+      }
     },
     [toast],
   );
@@ -208,32 +211,32 @@ export default function AdminPanel() {
         return;
       }
 
-      const { data, error } = await supabase.rpc(
-        "admin_search_users_filtered",
-        { q, p_filter: userFilter },
-      );
-      if (error) {
-        toast.error(error.message);
+      try {
+        const rows = await searchAdminUsers(q, userFilter);
+        setSearchResults(rows);
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Could not search users.",
+        );
         setSearchResults([]);
+      } finally {
         setSearchLoading(false);
-        return;
       }
-      setSearchResults((data ?? []) as UserLite[]);
-      setSearchLoading(false);
     }, 300);
 
     return () => clearTimeout(timer);
   }, [search, userFilter, toast]);
 
   const toggleBan = async (user: UserLite) => {
-    const newRole = user.role === "banned" ? null : "banned";
-    const { error } = await supabase
-      .from("profiles")
-      .update({ role: newRole })
-      .eq("id", user.id);
+    const newRole: "user" | "banned" =
+      user.role === "banned" ? "user" : "banned";
 
-    if (error) {
-      toast.error(error.message);
+    try {
+      await updateUserRole(user.id, newRole);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Could not update user role.",
+      );
       return;
     }
 

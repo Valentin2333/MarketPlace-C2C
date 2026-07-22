@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import { fetchUserReportDetail } from "../../lib/admin/adminApi";
 import { useCurrentUser } from "../../lib/useCurrentUser";
-import { useToast } from "../../components/Toast/useToast";
 import { useUserReports } from "../../components/UserReports/useUserReports";
 import styles from "./ReportDetailsPage.module.css";
 
@@ -45,7 +44,6 @@ export default function UserReportDetailsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { markUserSeen } = useUserReports();
-  const toast = useToast();
   const { userId, isAdmin, ready: authReady } = useCurrentUser();
 
   const goBack = () => {
@@ -75,27 +73,14 @@ export default function UserReportDetailsPage() {
     let active = true;
 
     (async () => {
-      const [
-        { data: profile, error: profileError },
-        { data: reps, error: repsError },
-      ] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id, name")
-          .eq("id", reportedUserId)
-          .maybeSingle(),
-        supabase.rpc("admin_list_user_reports", {
-          p_reported_id: reportedUserId,
-        }),
-      ]);
+      const detail = await fetchUserReportDetail(reportedUserId).catch(
+        () => null,
+      );
 
       if (!active) return;
 
-      if (profileError) toast.error(profileError.message);
-      if (repsError) toast.error(repsError.message);
-
-      setReportedUser((profile ?? null) as ReportedUserLite | null);
-      setReports((reps ?? []) as ReportRow[]);
+      setReportedUser(detail?.user ?? null);
+      setReports((detail?.reports ?? []) as ReportRow[]);
       setLoading(false);
 
       markUserSeen(reportedUserId);
@@ -104,7 +89,7 @@ export default function UserReportDetailsPage() {
     return () => {
       active = false;
     };
-  }, [authReady, isAdmin, reportedUserId, markUserSeen, toast]);
+  }, [authReady, isAdmin, reportedUserId, markUserSeen]);
 
   if (!authReady || !isAdmin) {
     return (

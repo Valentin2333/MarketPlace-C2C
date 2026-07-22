@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import { fetchListingReportDetail } from "../../lib/admin/adminApi";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { useReports } from "../../components/Reports/useReports";
 import styles from "./ReportDetailsPage.module.css";
@@ -71,20 +71,13 @@ export default function ReportDetailsPage() {
     let active = true;
 
     (async () => {
-      const [{ data: list }, { data: reps }] = await Promise.all([
-        supabase
-          .from("listings")
-          .select("id, title")
-          .eq("id", listingId)
-          .maybeSingle(),
-        supabase.rpc("admin_list_listing_reports", {
-          p_listing_id: listingId,
-        }),
-      ]);
+      const detail = await fetchListingReportDetail(listingId).catch(
+        () => null,
+      );
 
       if (!active) return;
-      setListing((list ?? null) as ListingLite | null);
-      setReports((reps ?? []) as ReportRow[]);
+      setListing(detail?.listing ?? null);
+      setReports((detail?.reports ?? []) as ReportRow[]);
       setLoading(false);
 
       markListingSeen(listingId);
