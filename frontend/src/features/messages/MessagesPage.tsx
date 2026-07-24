@@ -1,22 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import { fetchConversations, deleteChatRequest } from "../../lib/messages/messagesApi";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { formatDate } from "../../lib/format";
 import { useToast } from "../../components/Toast/useToast";
 import { useUnread } from "../../components/Messages/useUnread";
 import ConfirmModal from "../listings/ConfirmModal";
 import styles from "./MessagesPage.module.css";
-
-type MessageRow = {
-  id: string;
-  listing_id: string;
-  sender_id: string;
-  receiver_id: string;
-  body: string;
-  created_at: string | null;
-  read_at: string | null;
-};
 
 type ProfileLite = {
   id: string;
@@ -28,12 +18,6 @@ type ListingLite = {
   id: string;
   title: string;
   listing_images: { url: string }[] | null;
-};
-
-type ChatDeleteRow = {
-  listing_id: string;
-  other_id: string;
-  deleted_at: string;
 };
 
 type Conversation = {
@@ -58,91 +42,9 @@ export default function MessagesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const load = useCallback(async (uid: string) => {
-    const [{ data: rows }, { data: deletes }] = await Promise.all([
-      supabase
-        .from("messages")
-        .select(
-          "id, listing_id, sender_id, receiver_id, body, created_at, read_at",
-        )
-        .or(`sender_id.eq.${uid},receiver_id.eq.${uid}`)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("chat_deletes")
-        .select("listing_id, other_id, deleted_at")
-        .eq("user_id", uid),
-    ]);
-
-    const deletedMap = new Map(
-      ((deletes ?? []) as ChatDeleteRow[]).map((d) => [
-        `${d.listing_id}::${d.other_id}`,
-        d.deleted_at,
-      ]),
-    );
-
-    const messages = ((rows ?? []) as MessageRow[]).filter((m) => {
-      const otherId = m.sender_id === uid ? m.receiver_id : m.sender_id;
-      const deletedAt = deletedMap.get(`${m.listing_id}::${otherId}`);
-      return !deletedAt || (m.created_at !== null && m.created_at > deletedAt);
-    });
-
-    const grouped = new Map<string, Conversation>();
-    for (const m of messages) {
-      const otherId = m.sender_id === uid ? m.receiver_id : m.sender_id;
-      const key = `${m.listing_id}::${otherId}`;
-      let convo = grouped.get(key);
-      if (!convo) {
-        convo = {
-          key,
-          listingId: m.listing_id,
-          otherId,
-          lastBody: m.body,
-          lastAt: m.created_at,
-          lastFromMe: m.sender_id === uid,
-          unread: 0,
-          listing: null,
-          other: null,
-        };
-        grouped.set(key, convo);
-      }
-      if (m.receiver_id === uid && m.read_at === null) {
-        convo.unread += 1;
-      }
-    }
-
-    const convos = Array.from(grouped.values());
-    const otherIds = Array.from(new Set(convos.map((c) => c.otherId)));
-    const listingIds = Array.from(new Set(convos.map((c) => c.listingId)));
-
-    const [{ data: profiles }, { data: listings }] = await Promise.all([
-      otherIds.length
-        ? supabase
-            .from("profiles")
-            .select("id, name, avatar_url")
-            .in("id", otherIds)
-        : Promise.resolve({ data: [] as ProfileLite[] }),
-      listingIds.length
-        ? supabase
-            .from("listings")
-            .select("id, title, listing_images ( url )")
-            .in("id", listingIds)
-        : Promise.resolve({ data: [] as ListingLite[] }),
-    ]);
-
-    const profileMap = new Map(
-      ((profiles ?? []) as ProfileLite[]).map((p) => [p.id, p]),
-    );
-    const listingMap = new Map(
-      ((listings ?? []) as ListingLite[]).map((l) => [l.id, l]),
-    );
-
-    setConversations(
-      convos.map((c) => ({
-        ...c,
-        other: profileMap.get(c.otherId) ?? null,
-        listing: listingMap.get(c.listingId) ?? null,
-      })),
-    );
+  const load = useCallback(async () => {
+    const convos = await fetchConversations();
+    setConversations(convos);
     setLoading(false);
   }, []);
 
@@ -150,18 +52,17 @@ export default function MessagesPage() {
     if (!deleteTarget || !userId) return;
     setDeleting(true);
 
-    const { error } = await supabase.rpc("delete_chat", {
-      p_listing_id: deleteTarget.listingId,
-      p_other_id: deleteTarget.otherId,
-    });
+    try {
+      await deleteChatRequest(deleteTarget.listingId, deleteTarget.otherId);
+    } catch (err) {
+      setDeleting(false);
+      setDeleteTarget(null);
+      toast.error(err instanceof Error ? err.message : "Could not delete chat.");
+      return;
+    }
 
     setDeleting(false);
     setDeleteTarget(null);
-
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
 
     setConversations((prev) => prev.filter((c) => c.key !== deleteTarget.key));
     markConversationRead(deleteTarget.listingId, deleteTarget.otherId);
@@ -176,44 +77,12 @@ export default function MessagesPage() {
     }
     let active = true;
     (async () => {
-      if (active) await load(userId);
+      if (active) await load();
     })();
     return () => {
       active = false;
     };
   }, [authReady, userId, navigate, load]);
-
-  useEffect(() => {
-    if (!userId) return;
-
-    const channel = supabase
-      .channel(`inbox:${userId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "messages",
-          filter: `receiver_id=eq.${userId}`,
-        },
-        () => load(userId),
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "messages",
-          filter: `sender_id=eq.${userId}`,
-        },
-        () => load(userId),
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [userId, load]);
 
   if (loading) {
     return (
