@@ -1,20 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import {
+  fetchThread,
+  sendMessageRequest,
+  markThreadReadRequest,
+  deleteChatRequest,
+  type Message,
+} from "../../lib/messages/messagesApi";
+import { fetchPublicUser } from "../../lib/users/usersApi";
+import { fetchListing } from "../../lib/listings/listingsApi";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { useToast } from "../../components/Toast/useToast";
 import { useUnread } from "../../components/Messages/useUnread";
 import ConfirmModal from "../listings/ConfirmModal";
 import styles from "./ChatThreadPage.module.css";
-
-type Message = {
-  id: string;
-  sender_id: string;
-  receiver_id: string;
-  body: string;
-  created_at: string | null;
-  read_at: string | null;
-};
 
 type ProfileLite = {
   id: string;
@@ -27,8 +26,6 @@ type ListingLite = {
   title: string;
   listing_images: { url: string }[] | null;
 };
-
-const MESSAGE_COLUMNS = "id, sender_id, receiver_id, body, created_at, read_at";
 
 function formatTime(value: string | null): string {
   if (!value) return "";
@@ -65,13 +62,7 @@ export default function ChatThreadPage() {
 
   const markThreadRead = useCallback(async () => {
     if (!userId || !listingId || !otherId) return;
-    await supabase
-      .from("messages")
-      .update({ read_at: new Date().toISOString() })
-      .eq("listing_id", listingId)
-      .eq("sender_id", otherId)
-      .eq("receiver_id", userId)
-      .is("read_at", null);
+    await markThreadReadRequest(listingId, otherId);
     markConversationRead(listingId, otherId);
   }, [userId, listingId, otherId, markConversationRead]);
 
@@ -92,47 +83,32 @@ export default function ChatThreadPage() {
     const load = async () => {
       setLoading(true);
 
-      const [{ data: msgs }, { data: profile }, { data: list }, { data: mark }] =
-        await Promise.all([
-          supabase
-            .from("messages")
-            .select(MESSAGE_COLUMNS)
-            .eq("listing_id", listingId)
-            .or(
-              `and(sender_id.eq.${userId},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${userId})`,
-            )
-            .order("created_at", { ascending: true }),
-          supabase
-            .from("profiles")
-            .select("id, name, avatar_url")
-            .eq("id", otherId)
-            .maybeSingle(),
-          supabase
-            .from("listings")
-            .select("id, title, listing_images ( url )")
-            .eq("id", listingId)
-            .maybeSingle(),
-          supabase
-            .from("chat_deletes")
-            .select("deleted_at")
-            .eq("listing_id", listingId)
-            .eq("user_id", userId)
-            .eq("other_id", otherId)
-            .maybeSingle(),
-        ]);
+      const [msgs, profile, listingDetail] = await Promise.all([
+        fetchThread(listingId, otherId).catch(() => []),
+        fetchPublicUser(otherId),
+        fetchListing(listingId).catch(() => null),
+      ]);
 
       if (!active) return;
 
-      const deletedAt = (mark as { deleted_at: string } | null)?.deleted_at ?? null;
-      const loaded = ((msgs ?? []) as Message[]).filter(
-        (m) => !deletedAt || (m.created_at !== null && m.created_at > deletedAt),
+      setMessages(msgs);
+      setOther(
+        profile
+          ? { id: profile.id, name: profile.name, avatar_url: profile.avatar_url }
+          : null,
       );
-      setMessages(loaded);
-      setOther((profile ?? null) as ProfileLite | null);
-      setListing((list ?? null) as ListingLite | null);
+      setListing(
+        listingDetail
+          ? {
+              id: listingDetail.id,
+              title: listingDetail.title,
+              listing_images: listingDetail.listing_images,
+            }
+          : null,
+      );
       setLoading(false);
 
-      if (loaded.some((m) => m.receiver_id === userId && m.read_at === null)) {
+      if (msgs.some((m) => m.receiver_id === userId && m.read_at === null)) {
         markThreadRead();
       }
     };
@@ -142,57 +118,6 @@ export default function ChatThreadPage() {
       active = false;
     };
   }, [authReady, userId, listingId, otherId, navigate, markThreadRead]);
-
-  useEffect(() => {
-    if (!userId || !listingId || !otherId) return;
-
-    const inConvo = (m: Message) =>
-      (m.sender_id === userId && m.receiver_id === otherId) ||
-      (m.sender_id === otherId && m.receiver_id === userId);
-
-    const channel = supabase
-      .channel(`thread:${listingId}:${userId}:${otherId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `listing_id=eq.${listingId}`,
-        },
-        (payload) => {
-          const m = payload.new as Message;
-          if (!inConvo(m)) return;
-          setMessages((prev) =>
-            prev.some((x) => x.id === m.id) ? prev : [...prev, m],
-          );
-          if (m.receiver_id === userId) markThreadRead();
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "messages",
-          filter: `listing_id=eq.${listingId}`,
-        },
-        (payload) => {
-          const m = payload.new as Message;
-          if (!inConvo(m)) return;
-          setMessages((prev) =>
-            prev.map((x) =>
-              x.id === m.id ? { ...x, read_at: m.read_at, body: m.body } : x,
-            ),
-          );
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [userId, listingId, otherId, markThreadRead]);
 
   useEffect(() => {
     const el = messagesRef.current;
@@ -205,29 +130,19 @@ export default function ChatThreadPage() {
 
     setSending(true);
 
-    const { data, error } = await supabase
-      .from("messages")
-      .insert({
-        listing_id: listingId,
-        sender_id: userId,
-        receiver_id: otherId,
-        body: text,
-      })
-      .select(MESSAGE_COLUMNS)
-      .single();
-
-    setSending(false);
-
-    if (error || !data) {
-      toast.error(error?.message ?? "Could not send message.");
-      return;
+    try {
+      const sent = await sendMessageRequest(listingId, otherId, text);
+      setMessages((prev) =>
+        prev.some((x) => x.id === sent.id) ? prev : [...prev, sent],
+      );
+      setBody("");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Could not send message.",
+      );
+    } finally {
+      setSending(false);
     }
-
-    const sent = data as Message;
-    setMessages((prev) =>
-      prev.some((x) => x.id === sent.id) ? prev : [...prev, sent],
-    );
-    setBody("");
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -241,18 +156,17 @@ export default function ChatThreadPage() {
     if (!listingId || !otherId) return;
     setDeletingChat(true);
 
-    const { error } = await supabase.rpc("delete_chat", {
-      p_listing_id: listingId,
-      p_other_id: otherId,
-    });
+    try {
+      await deleteChatRequest(listingId, otherId);
+    } catch (err) {
+      setDeletingChat(false);
+      setDeleteOpen(false);
+      toast.error(err instanceof Error ? err.message : "Could not delete chat.");
+      return;
+    }
 
     setDeletingChat(false);
     setDeleteOpen(false);
-
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
 
     markConversationRead(listingId, otherId);
     toast.success("Chat deleted.");
