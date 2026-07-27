@@ -7,6 +7,7 @@ import {
   softDeleteChat,
   listUnread,
 } from "../db/messages.js";
+import { sendToUser } from "../ws/server.js";
 import {
   requireAuth,
   type AuthenticatedRequest,
@@ -68,6 +69,9 @@ router.post(
       otherId,
       body.trim(),
     );
+
+    sendToUser(otherId, "message:new", { listingId, message });
+
     res.status(201).json({ message });
   },
 );
@@ -79,6 +83,12 @@ router.patch(
     const listingId = paramValue(req, "listingId");
     const otherId = paramValue(req, "otherId");
     await markThreadRead(listingId, req.user!.id, otherId);
+
+    sendToUser(otherId, "message:read", {
+      listingId,
+      readerId: req.user!.id,
+    });
+
     res.status(204).send();
   },
 );
