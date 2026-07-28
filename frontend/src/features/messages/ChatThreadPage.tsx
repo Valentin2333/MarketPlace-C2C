@@ -9,6 +9,7 @@ import {
 } from "../../lib/messages/messagesApi";
 import { fetchPublicUser } from "../../lib/users/usersApi";
 import { fetchListing } from "../../lib/listings/listingsApi";
+import { onWsEvent } from "../../lib/ws/wsClient";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { useToast } from "../../components/Toast/useToast";
 import { useUnread } from "../../components/Messages/useUnread";
@@ -123,6 +124,42 @@ export default function ChatThreadPage() {
     const el = messagesRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, loading]);
+
+  useEffect(() => {
+    if (!userId || !listingId || !otherId) return;
+
+    const offNew = onWsEvent("message:new", (raw) => {
+      const payload = raw as { listingId: string; message: Message };
+      if (payload.listingId !== listingId) return;
+      if (payload.message.sender_id !== otherId) return;
+
+      setMessages((prev) =>
+        prev.some((x) => x.id === payload.message.id)
+          ? prev
+          : [...prev, payload.message],
+      );
+      markThreadRead();
+    });
+
+    const offRead = onWsEvent("message:read", (raw) => {
+      const payload = raw as { listingId: string; readerId: string };
+      if (payload.listingId !== listingId) return;
+      if (payload.readerId !== otherId) return;
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.sender_id === userId && m.read_at === null
+            ? { ...m, read_at: new Date().toISOString() }
+            : m,
+        ),
+      );
+    });
+
+    return () => {
+      offNew();
+      offRead();
+    };
+  }, [userId, listingId, otherId, markThreadRead]);
 
   const handleSend = async () => {
     const text = body.trim();

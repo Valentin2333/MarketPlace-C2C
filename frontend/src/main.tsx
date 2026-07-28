@@ -4,6 +4,7 @@ import App from "./App.tsx";
 import ThemeProvider from "./components/Theme/ThemeProvider";
 import ToastProvider from "./components/Toast/ToastProvider";
 import AuthProvider from "./lib/auth/AuthContext.tsx";
+import WebSocketConnector from "./lib/ws/WebSocketConnector";
 import FavoritesProvider from "./components/Favorites/FavoritesProvider";
 import "./styles/global.css";
 
@@ -12,6 +13,7 @@ createRoot(document.getElementById("root")!).render(
     <ThemeProvider>
       <ToastProvider>
         <AuthProvider>
+          <WebSocketConnector />
           <FavoritesProvider>
             <App />
           </FavoritesProvider>
