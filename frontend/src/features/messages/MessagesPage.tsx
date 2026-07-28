@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { fetchConversations, deleteChatRequest } from "../../lib/messages/messagesApi";
+import { onWsEvent } from "../../lib/ws/wsClient";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { formatDate } from "../../lib/format";
 import { useToast } from "../../components/Toast/useToast";
@@ -83,6 +84,13 @@ export default function MessagesPage() {
       active = false;
     };
   }, [authReady, userId, navigate, load]);
+
+  useEffect(() => {
+    if (!userId) return;
+    return onWsEvent("message:new", () => {
+      load();
+    });
+  }, [userId, load]);
 
   if (loading) {
     return (
