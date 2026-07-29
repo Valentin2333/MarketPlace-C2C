@@ -92,9 +92,10 @@ export default function PrivacyPage() {
             Some of your data is visible to other users by design — for example
             your name, city, profile picture and the listings you publish. We
             also share data with trusted service providers who process it on our
-            behalf, including our hosting and database provider (Supabase). We
-            may disclose data where required by law or to protect our users. We
-            do not sell your personal data.
+            behalf, including our database provider (Neon), backend hosting
+            (Render), file storage (Cloudflare R2), and email delivery (Google).
+            We may disclose data where required by law or to protect our users.
+            We do not sell your personal data.
           </p>
         </section>
 
