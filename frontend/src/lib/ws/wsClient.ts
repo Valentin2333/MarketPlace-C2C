@@ -12,7 +12,7 @@ let socket: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectDelay = 1000;
 const MAX_RECONNECT_DELAY = 15000;
-let shouldReconnect = false;
+let active = false;
 
 const listeners = new Map<string, Set<Listener>>();
 
@@ -22,9 +22,9 @@ function dispatch(event: string, payload: unknown): void {
 
 function openSocket(): void {
   const token = getAccessToken();
-  if (!token) return;
+  const url = token ? `${WS_URL}/ws?token=${token}` : `${WS_URL}/ws`;
 
-  socket = new WebSocket(`${WS_URL}/ws?token=${token}`);
+  socket = new WebSocket(url);
 
   socket.onopen = () => {
     reconnectDelay = 1000;
@@ -41,7 +41,7 @@ function openSocket(): void {
 
   socket.onclose = () => {
     socket = null;
-    if (shouldReconnect) scheduleReconnect();
+    if (active) scheduleReconnect();
   };
 
   socket.onerror = () => {
@@ -53,23 +53,29 @@ function scheduleReconnect(): void {
   if (reconnectTimer) return;
   reconnectTimer = setTimeout(async () => {
     reconnectTimer = null;
-    if (!shouldReconnect) return;
+    if (!active) return;
 
-    if (!getAccessToken()) {
-      await refreshAccessToken();
+    if (getAccessToken()) {
+      // A token exists but the connection dropped anyway — it may have
+      // expired. Refresh defensively before retrying.
+      await refreshAccessToken().catch(() => {});
     }
     openSocket();
     reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY);
   }, reconnectDelay);
 }
 
+/** Connects (or reconnects, to pick up a changed auth state). Safe to call
+ * whether or not the user is logged in — anonymous connections are valid. */
 export function connectWebSocket(): void {
-  shouldReconnect = true;
-  if (!socket) openSocket();
+  active = true;
+  reconnectDelay = 1000;
+  socket?.close();
+  openSocket();
 }
 
 export function disconnectWebSocket(): void {
-  shouldReconnect = false;
+  active = false;
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;

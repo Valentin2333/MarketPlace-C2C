@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { fetchGroupedUserReports, markUserReportsSeen } from "../../lib/admin/adminApi";
+import { onWsEvent } from "../../lib/ws/wsClient";
 import { UserReportsContext } from "./user-reports-context";
 import type { GroupedUserReport, UserReportsApi } from "./user-reports-context";
 
@@ -40,6 +41,15 @@ export default function UserReportsProvider({
       active = false;
     };
   }, [authReady, refresh]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    return onWsEvent("report:new", (raw) => {
+      const payload = raw as { kind: string };
+      if (payload.kind !== "user") return;
+      refresh();
+    });
+  }, [isAdmin, refresh]);
 
   const markUserSeen = useCallback(async (reportedId: string) => {
     setReportedUsers((prev) =>

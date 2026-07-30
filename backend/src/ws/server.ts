@@ -3,23 +3,40 @@ import type { Server } from "node:http";
 import { verifyAuthToken } from "../auth/jwt.js";
 
 const connections = new Map<string, Set<WebSocket>>();
+const adminSockets = new Set<WebSocket>();
+const allSockets = new Set<WebSocket>();
 
-function registerConnection(ws: WebSocket, userId: string): void {
-  if (!connections.has(userId)) {
-    connections.set(userId, new Set());
-  }
-  connections.get(userId)!.add(ws);
+function registerConnection(
+  ws: WebSocket,
+  userId: string | null,
+  role: string | null,
+): void {
+  allSockets.add(ws);
 
-  ws.on("close", () => {
-    connections.get(userId)?.delete(ws);
-    if (connections.get(userId)?.size === 0) {
-      connections.delete(userId);
+  if (userId) {
+    if (!connections.has(userId)) {
+      connections.set(userId, new Set());
     }
-  });
+    connections.get(userId)!.add(ws);
+  }
 
-  ws.on("error", () => {
-    connections.get(userId)?.delete(ws);
-  });
+  if (role === "admin") {
+    adminSockets.add(ws);
+  }
+
+  const cleanup = () => {
+    allSockets.delete(ws);
+    adminSockets.delete(ws);
+    if (userId) {
+      connections.get(userId)?.delete(ws);
+      if (connections.get(userId)?.size === 0) {
+        connections.delete(userId);
+      }
+    }
+  };
+
+  ws.on("close", cleanup);
+  ws.on("error", cleanup);
 }
 
 export function initWebSocketServer(httpServer: Server): void {
@@ -40,21 +57,23 @@ export function initWebSocketServer(httpServer: Server): void {
     const url = new URL(req.url, "http://localhost");
     const token = url.searchParams.get("token");
 
-    if (!token) {
-      socket.destroy();
-      return;
-    }
+    let userId: string | null = null;
+    let role: string | null = null;
 
-    let userId: string;
-    try {
-      userId = verifyAuthToken(token).sub;
-    } catch {
-      socket.destroy();
-      return;
+    if (token) {
+      try {
+        const payload = verifyAuthToken(token);
+        userId = payload.sub;
+        role = payload.role;
+      } catch {
+        // Invalid or expired token: fall back to an anonymous connection
+        // rather than rejecting outright, since public events (like new
+        // listings) are still valid for this visitor to receive.
+      }
     }
 
     wss.handleUpgrade(req, socket, head, (ws) => {
-      registerConnection(ws, userId);
+      registerConnection(ws, userId, role);
     });
   });
 }
@@ -69,6 +88,24 @@ export function sendToUser(
 
   const message = JSON.stringify({ event, payload });
   for (const ws of sockets) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(message);
+    }
+  }
+}
+
+export function broadcastToAdmins(event: string, payload: unknown): void {
+  const message = JSON.stringify({ event, payload });
+  for (const ws of adminSockets) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(message);
+    }
+  }
+}
+
+export function broadcastToAll(event: string, payload: unknown): void {
+  const message = JSON.stringify({ event, payload });
+  for (const ws of allSockets) {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(message);
     }

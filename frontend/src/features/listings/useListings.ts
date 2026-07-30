@@ -11,6 +11,7 @@ import {
   fetchListingCities,
   fetchCategories,
 } from "../../lib/listings/listingsApi";
+import { onWsEvent } from "../../lib/ws/wsClient";
 import type { PanelFilters, SortOption } from "./FiltersDrawer";
 
 export type ListingRow = {
@@ -133,6 +134,8 @@ export function useListings() {
   const [loading, setLoading] = useState(!initialCache);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [newListingsAvailable, setNewListingsAvailable] = useState(false);
+  const [reloadNonce, setReloadNonce] = useState(0);
 
   const didRestore = useRef(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -212,7 +215,7 @@ export function useListings() {
       active = false;
       clearTimeout(timer);
     };
-  }, [search, applied]);
+  }, [search, applied, reloadNonce]);
 
   const loadMore = useCallback(async () => {
     if (loadingMoreRef.current || loadingRef.current || !hasMoreRef.current)
@@ -305,6 +308,18 @@ export function useListings() {
     setApplied(DEFAULT_PANEL);
   }, []);
 
+  const reloadForNewListings = useCallback(() => {
+    listCache.delete(keyOf(searchRef.current, appliedRef.current));
+    setNewListingsAvailable(false);
+    setReloadNonce((n) => n + 1);
+  }, []);
+
+  useEffect(() => {
+    return onWsEvent("listing:new", () => {
+      setNewListingsAvailable(true);
+    });
+  }, []);
+
   const activeCount =
     (applied.categoryId ? 1 : 0) +
     (applied.city ? 1 : 0) +
@@ -333,5 +348,7 @@ export function useListings() {
     error,
     sentinelRef,
     saveScroll,
+    newListingsAvailable,
+    reloadForNewListings,
   };
 }
