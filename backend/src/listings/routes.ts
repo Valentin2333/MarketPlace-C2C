@@ -10,6 +10,7 @@ import {
   listActiveCities,
 } from "../db/listings.js";
 import { createListingReport } from "../db/reports.js";
+import { broadcastToAll, broadcastToAdmins } from "../ws/server.js";
 import {
   requireAuth,
   type AuthenticatedRequest,
@@ -135,6 +136,8 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res) => {
     await replaceListingImages(id, images);
   }
 
+  broadcastToAll("listing:new", { listingId: id });
+
   res.status(201).json({ id });
 });
 
@@ -206,6 +209,8 @@ router.post(
       res.status(409).json({ error: "You've already reported this listing." });
       return;
     }
+
+    broadcastToAdmins("report:new", { kind: "listing", listingId: paramId(req) });
 
     res.status(201).send();
   },

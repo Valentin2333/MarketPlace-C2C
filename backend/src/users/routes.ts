@@ -7,6 +7,7 @@ import {
   deleteUser,
 } from "../db/users.js";
 import { createUserReport } from "../db/userReports.js";
+import { broadcastToAdmins } from "../ws/server.js";
 import { listUserFileKeys, removeUploadedFiles } from "../db/uploadedFiles.js";
 import { r2Client, R2_BUCKET_NAME } from "../storage/r2.js";
 import {
@@ -133,6 +134,8 @@ router.post(
       res.status(409).json({ error: "You've already reported this user." });
       return;
     }
+
+    broadcastToAdmins("report:new", { kind: "user", reportedId: paramId(req) });
 
     res.status(201).send();
   },

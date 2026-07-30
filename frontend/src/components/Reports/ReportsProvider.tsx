@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { fetchGroupedListingReports, markListingReportsSeen } from "../../lib/admin/adminApi";
+import { onWsEvent } from "../../lib/ws/wsClient";
 import { ReportsContext } from "./reports-context";
 import type { GroupedReport, ReportsApi } from "./reports-context";
 
@@ -36,6 +37,15 @@ export default function ReportsProvider({ children }: { children: ReactNode }) {
       active = false;
     };
   }, [authReady, refresh]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    return onWsEvent("report:new", (raw) => {
+      const payload = raw as { kind: string };
+      if (payload.kind !== "listing") return;
+      refresh();
+    });
+  }, [isAdmin, refresh]);
 
   const markListingSeen = useCallback(async (listingId: string) => {
     setReports((prev) =>

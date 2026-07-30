@@ -26,6 +26,8 @@ export default function ListingsPage() {
     error,
     sentinelRef,
     saveScroll,
+    newListingsAvailable,
+    reloadForNewListings,
   } = useListings();
 
   const count = total ?? listings.length;
@@ -41,6 +43,16 @@ export default function ListingsPage() {
           activeCount={activeCount}
           onOpenFilters={openDrawer}
         />
+
+        {newListingsAvailable && (
+          <button
+            type="button"
+            className={styles.newListingsBanner}
+            onClick={reloadForNewListings}
+          >
+            New listings just came in — tap to refresh
+          </button>
+        )}
 
         {loading ? (
           <div className={styles.state}>Loading listings…</div>
