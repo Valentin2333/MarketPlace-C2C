@@ -1,8 +1,10 @@
-# backend
+# MarketPlace C2C - backend
 
-Custom Express + TypeScript API for MarketPlace C2C, living alongside `src/`
-(the frontend) in the parent repo. Replaced Supabase (auth, database, storage,
-realtime, email) piece by piece — see the root README for the full story.
+Custom Express + TypeScript API for MarketPlace C2C, living alongside
+[`../frontend`](../frontend) in this monorepo. Replaced Supabase (auth,
+database, storage, realtime, email) piece by piece — see the
+[root README](../README.md) for the live demo link, full feature list, and
+overall project overview.
 
 ## Setup
 
