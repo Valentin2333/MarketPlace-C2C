@@ -22,6 +22,12 @@ const transporter = nodemailer.createTransport({
     user: GMAIL_USER,
     pass: GMAIL_APP_PASSWORD,
   },
+  // Nodemailer's defaults (up to 10 minutes for socketTimeout) are far too
+  // generous for a request/response cycle. These bound worst-case latency
+  // so a stalled connection fails fast and logs clearly, instead of hanging.
+  connectionTimeout: 10_000,
+  greetingTimeout: 10_000,
+  socketTimeout: 15_000,
 });
 
 export interface SendEmailParams {
