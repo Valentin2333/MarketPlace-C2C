@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import dns from "node:dns";
 
 const GMAIL_USER: string = (() => {
   const value = process.env.GMAIL_USER;
