@@ -3,7 +3,6 @@ import Register from "./features/auth/Register";
 import Login from "./features/auth/Login";
 import ForgotPassword from "./features/auth/ForgotPassword";
 import ResetPassword from "./features/auth/ResetPassword";
-import VerifyEmail from "./features/auth/VerifyEmail";
 import ProfilePage from "./features/profile/ProfilePage";
 import ListingsPage from "./features/listings/ListingsPage";
 import ListingDetailPage from "./features/listings/ListingDetailPage";
@@ -41,7 +40,6 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/profile/:id" element={<ProfilePage />} />
         <Route path="/profile/:id/listings" element={<UserListingsPage />} />
         <Route path="/faq" element={<FaqPage />} />
