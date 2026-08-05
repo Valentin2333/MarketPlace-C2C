@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import dns from "node:dns";
 
 const GMAIL_USER: string = (() => {
   const value = process.env.GMAIL_USER;
@@ -22,9 +23,15 @@ const transporter = nodemailer.createTransport({
     user: GMAIL_USER,
     pass: GMAIL_APP_PASSWORD,
   },
-  // Nodemailer's defaults (up to 10 minutes for socketTimeout) are far too
-  // generous for a request/response cycle. These bound worst-case latency
-  // so a stalled connection fails fast and logs clearly, instead of hanging.
+  tls: {
+    // Render's containers can't route outbound IPv6, and Gmail's SMTP
+    // hostname resolves to an IPv6 address first in that environment -
+    // without forcing IPv4 here, connections fail with ENETUNREACH before
+    // ever reaching Gmail's (also valid) IPv4 address.
+    lookup: (hostname, options, callback) => {
+      dns.lookup(hostname, { family: 4 }, callback);
+    },
+  },
   connectionTimeout: 10_000,
   greetingTimeout: 10_000,
   socketTimeout: 15_000,
