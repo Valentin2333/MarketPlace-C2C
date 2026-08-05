@@ -106,9 +106,15 @@ router.post("/register", registerLimiter, async (req, res) => {
     name: name?.trim() || undefined,
   });
 
-  await sendVerificationEmail(user);
-
   res.status(201).json({ user: toPublicUser(user) });
+
+  // Deliberately not awaited: a slow or stalled SMTP connection must never
+  // hold the HTTP response open. The user already has their account; if
+  // sending fails, they still have "resend verification email" on the
+  // login page as a retry path.
+  sendVerificationEmail(user).catch((err) => {
+    console.error("Failed to send verification email", err);
+  });
 });
 
 router.post("/login", loginLimiter, async (req, res) => {
@@ -200,11 +206,17 @@ router.post(
     if (user) {
       const token = await issuePasswordResetToken(user.id);
       const resetUrl = `${process.env.FRONTEND_ORIGIN}/reset-password?token=${token}`;
-      await sendEmail({
+
+      res.status(204).send();
+
+      sendEmail({
         to: user.email,
         subject: "Reset your MarketPlace C2C password",
         html: passwordResetEmailHtml(resetUrl),
+      }).catch((err) => {
+        console.error("Failed to send password reset email", err);
       });
+      return;
     }
 
     res.status(204).send();
@@ -276,11 +288,14 @@ router.post(
     }
 
     const user = await findUserByEmail(email.trim().toLowerCase());
-    if (user && !user.email_verified) {
-      await sendVerificationEmail(user);
-    }
 
     res.status(204).send();
+
+    if (user && !user.email_verified) {
+      sendVerificationEmail(user).catch((err) => {
+        console.error("Failed to send verification email", err);
+      });
+    }
   },
 );
 
