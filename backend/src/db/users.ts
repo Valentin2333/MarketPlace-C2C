@@ -8,6 +8,7 @@ export interface User {
   city: string | null;
   avatar_url: string | null;
   role: string;
+  email_verified: boolean;
   created_at: Date;
 }
 
@@ -95,8 +96,8 @@ export async function createUser(params: {
   name?: string;
 }): Promise<User> {
   const result = await pool.query<User>(
-    `INSERT INTO users (email, password_hash, name)
-     VALUES ($1, $2, $3)
+    `INSERT INTO users (email, password_hash, name, email_verified)
+     VALUES ($1, $2, $3, false)
      RETURNING *`,
     [params.email, params.passwordHash, params.name ?? null],
   );
@@ -109,6 +110,12 @@ export async function updateUserPassword(
 ): Promise<void> {
   await pool.query("UPDATE users SET password_hash = $1 WHERE id = $2", [
     passwordHash,
+    userId,
+  ]);
+}
+
+export async function markEmailVerified(userId: string): Promise<void> {
+  await pool.query("UPDATE users SET email_verified = true WHERE id = $1", [
     userId,
   ]);
 }
