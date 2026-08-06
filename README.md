@@ -3,7 +3,9 @@
 A consumer-to-consumer (C2C) listings platform where anyone can post ads to sell secondhand items - electronics, furniture, clothing, and more. Buyers browse listings by category, location and price, message sellers directly in real time, and manage their own account, listings and conversations.
 
 **Live demo:** https://marketplacec2c.netlify.app/
+
 **Test email:** test@test.com
+
 **Test password:** 12345678
 
 This is a monorepo: the frontend lives in [`frontend/`](./frontend), the backend lives in [`backend/`](./backend). Both were originally built against Supabase, then migrated step by step to a fully custom Node/Express/Postgres backend — nothing in the running app talks to Supabase anymore.
@@ -36,7 +38,7 @@ This is a monorepo: the frontend lives in [`frontend/`](./frontend), the backend
 | Auth | Custom JWT-based context/hooks | bcrypt password hashing, JWT + rotating refresh tokens |
 | Database | - | Postgres via `pg`, hosted on Neon |
 | File storage | - | Cloudflare R2 (S3-compatible) |
-| Email | - | Gmail SMTP via Nodemailer |
+| Email | - | Gmail API over HTTPS (OAuth2) — not SMTP, since Render's free tier blocks outbound SMTP ports |
 | Realtime | Native `WebSocket` API, hand-rolled reconnect | `ws` (raw WebSocket server, no Socket.IO) |
 | Testing | Vitest (unit tests for pure logic) | Vitest + Supertest (API integration tests) |
 | Hosting | Netlify | Render |
