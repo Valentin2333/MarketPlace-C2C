@@ -16,7 +16,7 @@ function extractResetToken(html: string): string {
 describe("POST /auth/register", () => {
   beforeEach(resetDatabase);
 
-  it("creates a new user and returns tokens", async () => {
+  it("creates a new unverified user and sends a verification email", async () => {
     const response = await request(app).post("/auth/register").send({
       email: "new@example.com",
       password: "testpassword123",
@@ -27,9 +27,12 @@ describe("POST /auth/register", () => {
     expect(response.body.user.email).toBe("new@example.com");
     expect(response.body.user.name).toBe("New User");
     expect(response.body.user.role).toBe("user");
-    expect(response.body).toHaveProperty("accessToken");
-    expect(response.body).toHaveProperty("refreshToken");
+    expect(response.body.user.emailVerified).toBe(false);
     expect(response.body.user).not.toHaveProperty("password_hash");
+    // Tokens aren't issued until the email is verified.
+    expect(response.body).not.toHaveProperty("accessToken");
+    expect(response.body).not.toHaveProperty("refreshToken");
+    expect(sendEmail).toHaveBeenCalledOnce();
   });
 
   it("rejects a duplicate email", async () => {
@@ -95,6 +98,68 @@ describe("POST /auth/login", () => {
       .send({ email: "ghost@example.com", password: "testpassword123" });
 
     expect(response.status).toBe(401);
+  });
+});
+
+describe("Email verification flow", () => {
+  beforeEach(() => {
+    vi.mocked(sendEmail).mockClear();
+    return resetDatabase();
+  });
+
+  it("blocks login until the email is verified", async () => {
+    await request(app).post("/auth/register").send({
+      email: "unverified@example.com",
+      password: "testpassword123",
+    });
+
+    const response = await request(app)
+      .post("/auth/login")
+      .send({ email: "unverified@example.com", password: "testpassword123" });
+
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("EMAIL_NOT_VERIFIED");
+  });
+
+  it("verifies the email and returns tokens that then allow login", async () => {
+    await request(app).post("/auth/register").send({
+      email: "toverify@example.com",
+      password: "testpassword123",
+    });
+
+    const html = vi.mocked(sendEmail).mock.calls[0][0].html;
+    const token = extractResetToken(html);
+
+    const confirmResponse = await request(app)
+      .post("/auth/verify-email/confirm")
+      .send({ token });
+
+    expect(confirmResponse.status).toBe(200);
+    expect(confirmResponse.body.user.emailVerified).toBe(true);
+    expect(confirmResponse.body).toHaveProperty("accessToken");
+    expect(confirmResponse.body).toHaveProperty("refreshToken");
+
+    const loginResponse = await request(app)
+      .post("/auth/login")
+      .send({ email: "toverify@example.com", password: "testpassword123" });
+    expect(loginResponse.status).toBe(200);
+  });
+
+  it("rejects an invalid or already-used verification token", async () => {
+    const response = await request(app)
+      .post("/auth/verify-email/confirm")
+      .send({ token: "not-a-real-token" });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("resend always returns 204, even for an unknown email", async () => {
+    const response = await request(app)
+      .post("/auth/verify-email/resend")
+      .send({ email: "ghost@example.com" });
+
+    expect(response.status).toBe(204);
+    expect(sendEmail).not.toHaveBeenCalled();
   });
 });
 

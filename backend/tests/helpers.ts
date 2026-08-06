@@ -1,6 +1,8 @@
+import { vi } from "vitest";
 import request from "supertest";
 import app from "../src/app.js";
 import { pool } from "../src/db/pool.js";
+import { sendEmail } from "../src/email/gmail.js";
 
 export async function resetDatabase(): Promise<void> {
   await pool.query(`
@@ -35,6 +37,20 @@ export interface TestUser {
 
 let counter = 0;
 
+function extractVerificationToken(html: string): string {
+  const match = html.match(/href="([^"]+)"/);
+  if (!match) throw new Error("No link found in verification email HTML");
+  const url = new URL(match[1]);
+  const token = url.searchParams.get("token");
+  if (!token) throw new Error("No token found in verification link");
+  return token;
+}
+
+// Registration only creates the account - the API requires a verified
+// email before it will issue tokens. This helper carries out both steps
+// (register, then confirm via the token from the mocked verification
+// email) so the rest of the suite can keep treating "register a test
+// user" as a single call that hands back a ready-to-use access token.
 export async function registerTestUser(
   overrides: { email?: string; password?: string; name?: string } = {},
 ): Promise<TestUser> {
@@ -53,11 +69,34 @@ export async function registerTestUser(
     );
   }
 
+  const verificationCall = vi
+    .mocked(sendEmail)
+    .mock.calls.find((call) => call[0].to === email);
+  if (!verificationCall) {
+    throw new Error(`No verification email was sent to ${email}`);
+  }
+  const token = extractVerificationToken(verificationCall[0].html);
+
+  const verifyResponse = await request(app)
+    .post("/auth/verify-email/confirm")
+    .send({ token });
+
+  if (verifyResponse.status !== 200) {
+    throw new Error(
+      `Failed to verify test user email: ${JSON.stringify(verifyResponse.body)}`,
+    );
+  }
+
+  // Clear the mock so tests that assert on sendEmail call counts for
+  // their own actions (e.g. password reset) aren't tripped up by this
+  // setup step's verification email.
+  vi.mocked(sendEmail).mockClear();
+
   return {
-    id: response.body.user.id,
+    id: verifyResponse.body.user.id,
     email,
-    accessToken: response.body.accessToken,
-    refreshToken: response.body.refreshToken,
+    accessToken: verifyResponse.body.accessToken,
+    refreshToken: verifyResponse.body.refreshToken,
   };
 }
 
