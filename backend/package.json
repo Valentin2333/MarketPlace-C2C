@@ -8,6 +8,7 @@
     "build": "tsc -b",
     "start": "node dist/index.js",
     "migrate": "tsx src/migrate.ts",
+    "migrate:test": "tsx scripts/migrateTest.ts",
     "get-gmail-token": "tsx scripts/getGmailRefreshToken.ts",
     "test": "vitest run",
     "test:watch": "vitest"

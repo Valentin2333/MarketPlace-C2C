@@ -1,14 +1,6 @@
 const MAX_DIM = 1280;
 const QUALITY = 0.72;
 
-export const LISTING_IMAGES_BUCKET = "listing-images";
-
-export function pathFromListingImageUrl(url: string): string | null {
-  const marker = `/${LISTING_IMAGES_BUCKET}/`;
-  const i = url.indexOf(marker);
-  return i === -1 ? null : url.slice(i + marker.length);
-}
-
 export async function compressImage(
   file: File,
 ): Promise<{ blob: Blob; ext: string; type: string }> {
