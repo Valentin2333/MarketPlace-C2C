@@ -8,6 +8,7 @@
     "build": "tsc -b",
     "start": "node dist/index.js",
     "migrate": "tsx src/migrate.ts",
+    "get-gmail-token": "tsx scripts/getGmailRefreshToken.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -18,9 +19,9 @@
     "dotenv": "^16.4.5",
     "express": "^5.2.1",
     "express-rate-limit": "^8.6.1",
+    "google-auth-library": "^11.0.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^1.4.5-lts.1",
-    "nodemailer": "^9.0.3",
     "pg": "^8.13.1",
     "ws": "^8.18.0"
   },
@@ -31,7 +32,6 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^1.4.12",
     "@types/node": "^22.10.2",
-    "@types/nodemailer": "^8.0.1",
     "@types/pg": "^8.11.10",
     "@types/supertest": "^6.0.2",
     "@types/ws": "^8.5.13",

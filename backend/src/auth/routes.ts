@@ -4,6 +4,7 @@ import {
   findUserById,
   createUser,
   updateUserPassword,
+  markEmailVerified,
   type User,
 } from "../db/users.js";
 import { hashPassword, comparePassword } from "./password.js";
@@ -18,6 +19,10 @@ import {
   issuePasswordResetToken,
   consumePasswordResetToken,
 } from "./passwordResetTokens.js";
+import {
+  issueEmailVerificationToken,
+  consumeEmailVerificationToken,
+} from "./emailVerificationTokens.js";
 import { sendEmail } from "../email/gmail.js";
 import {
   requireAuth,
@@ -43,6 +48,7 @@ function toPublicUser(user: User) {
     city: user.city,
     avatarUrl: user.avatar_url,
     role: user.role,
+    emailVerified: user.email_verified,
   };
 }
 
@@ -54,6 +60,20 @@ async function issueTokenPair(user: User) {
 
 function passwordResetEmailHtml(resetUrl: string): string {
   return `<p>Click the link below to reset your MarketPlace C2C password. This link expires in 1 hour.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you didn't request this, you can safely ignore this email.</p>`;
+}
+
+function verificationEmailHtml(verifyUrl: string): string {
+  return `<p>Welcome to MarketPlace C2C! Click the link below to verify your email address. This link expires in 24 hours.</p><p><a href="${verifyUrl}">${verifyUrl}</a></p><p>If you didn't create this account, you can safely ignore this email.</p>`;
+}
+
+async function sendVerificationEmail(user: User): Promise<void> {
+  const token = await issueEmailVerificationToken(user.id);
+  const verifyUrl = `${process.env.FRONTEND_ORIGIN}/verify-email?token=${token}`;
+  await sendEmail({
+    to: user.email,
+    subject: "Verify your MarketPlace C2C email",
+    html: verificationEmailHtml(verifyUrl),
+  });
 }
 
 router.post("/register", registerLimiter, async (req, res) => {
@@ -85,9 +105,10 @@ router.post("/register", registerLimiter, async (req, res) => {
     passwordHash,
     name: name?.trim() || undefined,
   });
-  const tokens = await issueTokenPair(user);
 
-  res.status(201).json({ user: toPublicUser(user), ...tokens });
+  await sendVerificationEmail(user);
+
+  res.status(201).json({ user: toPublicUser(user) });
 });
 
 router.post("/login", loginLimiter, async (req, res) => {
@@ -105,6 +126,14 @@ router.post("/login", loginLimiter, async (req, res) => {
 
   if (!user || !passwordMatches) {
     res.status(401).json({ error: "Invalid email or password" });
+    return;
+  }
+
+  if (!user.email_verified) {
+    res.status(403).json({
+      error: "Please verify your email before logging in.",
+      code: "EMAIL_NOT_VERIFIED",
+    });
     return;
   }
 
@@ -206,5 +235,53 @@ router.post("/password-reset/confirm", async (req, res) => {
 
   res.status(204).send();
 });
+
+router.post("/verify-email/confirm", async (req, res) => {
+  const { token } = req.body ?? {};
+
+  if (typeof token !== "string") {
+    res.status(400).json({ error: "token is required" });
+    return;
+  }
+
+  const userId = await consumeEmailVerificationToken(token);
+  if (!userId) {
+    res
+      .status(400)
+      .json({ error: "This verification link is invalid or has expired." });
+    return;
+  }
+
+  await markEmailVerified(userId);
+
+  const user = await findUserById(userId);
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  const tokens = await issueTokenPair(user);
+  res.json({ user: toPublicUser(user), ...tokens });
+});
+
+router.post(
+  "/verify-email/resend",
+  emailActionLimiter,
+  async (req, res) => {
+    const { email } = req.body ?? {};
+
+    if (typeof email !== "string" || !isValidEmail(email)) {
+      res.status(400).json({ error: "A valid email is required" });
+      return;
+    }
+
+    const user = await findUserByEmail(email.trim().toLowerCase());
+    if (user && !user.email_verified) {
+      await sendVerificationEmail(user);
+    }
+
+    res.status(204).send();
+  },
+);
 
 export default router;

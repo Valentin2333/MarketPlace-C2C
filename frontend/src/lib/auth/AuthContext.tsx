@@ -4,6 +4,7 @@ import {
   loginRequest,
   logoutRequest,
   meRequest,
+  confirmEmailVerificationRequest,
   type PublicUser,
 } from "./authApi";
 import { getRefreshToken, setTokens, clearTokens } from "./tokenStorage";
@@ -52,11 +53,13 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     setUser(result.user);
   }, []);
 
+  // Registering no longer logs the user in automatically — the backend
+  // requires a verified email before issuing tokens, so this just creates
+  // the account. The caller (Register.tsx) sends them to the login page
+  // with a "check your email" message instead.
   const register = useCallback(
     async (email: string, password: string, name?: string) => {
-      const result = await registerRequest({ email, password, name });
-      setTokens(result.accessToken, result.refreshToken);
-      setUser(result.user);
+      await registerRequest({ email, password, name });
     },
     [],
   );
@@ -70,9 +73,15 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const completeEmailVerification = useCallback(async (token: string) => {
+    const result = await confirmEmailVerificationRequest(token);
+    setTokens(result.accessToken, result.refreshToken);
+    setUser(result.user);
+  }, []);
+
   const value = useMemo(
-    () => ({ user, ready, login, register, logout }),
-    [user, ready, login, register, logout],
+    () => ({ user, ready, login, register, logout, completeEmailVerification }),
+    [user, ready, login, register, logout, completeEmailVerification],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
