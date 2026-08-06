@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import { OAuth2Client } from "google-auth-library";
 
 const GMAIL_USER: string = (() => {
   const value = process.env.GMAIL_USER;
@@ -8,21 +8,53 @@ const GMAIL_USER: string = (() => {
   return value;
 })();
 
-const GMAIL_APP_PASSWORD: string = (() => {
-  const value = process.env.GMAIL_APP_PASSWORD;
+const GMAIL_CLIENT_ID: string = (() => {
+  const value = process.env.GMAIL_CLIENT_ID;
   if (!value) {
-    throw new Error("GMAIL_APP_PASSWORD is not set");
+    throw new Error("GMAIL_CLIENT_ID is not set");
   }
   return value;
 })();
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: GMAIL_USER,
-    pass: GMAIL_APP_PASSWORD,
-  },
-});
+const GMAIL_CLIENT_SECRET: string = (() => {
+  const value = process.env.GMAIL_CLIENT_SECRET;
+  if (!value) {
+    throw new Error("GMAIL_CLIENT_SECRET is not set");
+  }
+  return value;
+})();
+
+const GMAIL_REFRESH_TOKEN: string = (() => {
+  const value = process.env.GMAIL_REFRESH_TOKEN;
+  if (!value) {
+    throw new Error("GMAIL_REFRESH_TOKEN is not set");
+  }
+  return value;
+})();
+
+// This talks to Gmail over its real HTTPS API (port 443), not SMTP -
+// deliberately, since Render's free tier blocks outbound SMTP ports
+// (25/465/587) entirely. HTTPS is never blocked the same way.
+const oauth2Client = new OAuth2Client(GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET);
+oauth2Client.setCredentials({ refresh_token: GMAIL_REFRESH_TOKEN });
+
+function buildRawMessage(to: string, subject: string, html: string): string {
+  const message = [
+    `From: ${GMAIL_USER}`,
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    `MIME-Version: 1.0`,
+    `Content-Type: text/html; charset="UTF-8"`,
+    ``,
+    html,
+  ].join("\r\n");
+
+  return Buffer.from(message)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
 
 export interface SendEmailParams {
   to: string;
@@ -31,10 +63,31 @@ export interface SendEmailParams {
 }
 
 export async function sendEmail(params: SendEmailParams): Promise<void> {
-  await transporter.sendMail({
-    from: GMAIL_USER,
-    to: params.to,
-    subject: params.subject,
-    html: params.html,
-  });
+  const { token } = await oauth2Client.getAccessToken();
+  if (!token) {
+    throw new Error("Could not obtain a Gmail API access token");
+  }
+
+  const raw = buildRawMessage(params.to, params.subject, params.html);
+
+  const response = await fetch(
+    "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ raw }),
+      // Defensive: an HTTPS call to Google's API should be fast, but this
+      // caps worst-case latency so a Google-side hiccup can't hang the
+      // request the way blocked SMTP connections used to.
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Gmail API send failed: ${response.status} ${body}`);
+  }
 }

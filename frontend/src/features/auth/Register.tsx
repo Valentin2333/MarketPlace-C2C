@@ -32,7 +32,12 @@ export default function Register() {
 
     try {
       await registerAccount(data.email, data.password, data.name);
-      navigate("/listings");
+      navigate("/login", {
+        state: {
+          justRegistered: true,
+          registeredEmail: data.email.trim().toLowerCase(),
+        },
+      });
     } catch (err) {
       setServerError(
         friendlyAuthError(err instanceof Error ? err.message : ""),

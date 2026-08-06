@@ -7,6 +7,7 @@ export type PublicUser = {
   city: string | null;
   avatarUrl: string | null;
   role: string;
+  emailVerified: boolean;
 };
 
 type TokenPair = {
@@ -17,7 +18,11 @@ type TokenPair = {
 async function parseJsonOrThrow<T>(response: Response): Promise<T> {
   const body = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(body?.error ?? "Something went wrong");
+    const error = new Error(body?.error ?? "Something went wrong") as Error & {
+      code?: string;
+    };
+    if (body?.code) error.code = body.code;
+    throw error;
   }
   return body as T;
 }
@@ -26,7 +31,7 @@ export async function registerRequest(params: {
   email: string;
   password: string;
   name?: string;
-}): Promise<{ user: PublicUser } & TokenPair> {
+}): Promise<{ user: PublicUser }> {
   const response = await fetch(`${API_URL}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -97,6 +102,29 @@ export async function confirmPasswordResetRequest(params: {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error ?? "Something went wrong");
+  }
+}
+
+export async function confirmEmailVerificationRequest(
+  token: string,
+): Promise<{ user: PublicUser } & TokenPair> {
+  const response = await fetch(`${API_URL}/auth/verify-email/confirm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+  return parseJsonOrThrow(response);
+}
+
+export async function resendVerificationRequest(email: string): Promise<void> {
+  const response = await fetch(`${API_URL}/auth/verify-email/resend`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
   });
   if (!response.ok) {
     const body = await response.json().catch(() => null);
