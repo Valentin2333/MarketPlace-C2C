@@ -1,0 +1,68 @@
+/* NotFoundPage.module.css */
+
+.page {
+  min-height: calc(100vh - var(--navbar-height));
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+}
+
+.card {
+  max-width: 440px;
+  width: 100%;
+  text-align: center;
+  padding: var(--space-10) var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+}
+
+.code {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--color-primary);
+  margin-bottom: var(--space-3);
+}
+
+.icon {
+  font-size: 3rem;
+  line-height: 1;
+  margin-bottom: var(--space-5);
+}
+
+.title {
+  font-size: var(--text-2xl);
+  margin-bottom: var(--space-3);
+}
+
+.text {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  margin-bottom: var(--space-6);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.primary {
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  transition: filter var(--transition-fast);
+}
+
+.primary:hover {
+  filter: brightness(1.08);
+}
