@@ -24,6 +24,7 @@ import AdminPanel from "./features/admin/AdminPanel";
 import ReportDetailsPage from "./features/admin/ReportDetailsPage";
 import UserReportDetailsPage from "./features/admin/UserReportDetailsPage";
 import BanGate from "./components/BanGate/BanGate";
+import RouteErrorBoundary from "./components/ErrorBoundary/RouteErrorBoundary";
 
 export default function App() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
         <BanGate>
         <ScrollToTop />
         <Navbar />
+      <RouteErrorBoundary>
       <Routes>
         <Route path="/listings" element={<ListingsPage />} />
         <Route path="/listings/:id" element={<ListingDetailPage />} />
@@ -66,6 +68,7 @@ export default function App() {
         <Route path="/" element={<Navigate to="/listings" replace />} />
         <Route path="*" element={<Navigate to="/listings" replace />} />
       </Routes>
+      </RouteErrorBoundary>
       <Footer />
         </BanGate>
         </UserReportsProvider>
