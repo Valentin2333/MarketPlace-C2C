@@ -3,9 +3,7 @@
 A consumer-to-consumer (C2C) listings platform where anyone can post ads to sell secondhand items - electronics, furniture, clothing, and more. Buyers browse listings by category, location and price, message sellers directly in real time, and manage their own account, listings and conversations.
 
 **Live demo:** https://marketplacec2c.netlify.app/
-
 **Test email:** test@test.com
-
 **Test password:** 12345678
 
 This is a monorepo: the frontend lives in [`frontend/`](./frontend), the backend lives in [`backend/`](./backend). Both were originally built against Supabase, then migrated step by step to a fully custom Node/Express/Postgres backend — nothing in the running app talks to Supabase anymore.
@@ -26,6 +24,7 @@ This is a monorepo: the frontend lives in [`frontend/`](./frontend), the backend
 - **Reporting listings and users** - Duplicate reports are blocked; reports show up live in the admin panel.
 - **Admin panel** - User management (search, ban/unban) and live-updating reported-listings/reported-users review.
 - **Ban gate** - Banned users see a dedicated suspended-account page instead of the app.
+- **404 page and error boundaries** - Unmatched routes get a proper not-found page instead of silently redirecting; a render error in one page shows a contained "something went wrong" card (with a retry) instead of blanking the whole app.
 - **Dark / light theme toggle**, **toast notifications**, and info pages (FAQ, Terms, Privacy).
 
 ## Tech stack

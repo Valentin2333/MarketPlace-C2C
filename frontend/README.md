@@ -59,10 +59,16 @@ alongside `src/lib/format.ts`).
 src/
   components/
     BanGate/          Gate that shows a banned-account page instead of the app
+    BrandMark/         The logo mark (SVG), used in the navbar
+    ErrorBoundary/     Catches render errors - ErrorBoundary, RouteErrorBoundary
+                        (auto-resets per route), shared ErrorFallback UI
     Favorites/          FavoritesProvider/useFavorites + the heart button
+    Footer/             Page footer
+    ListingCard/        Single listing card used in the listings grid
     Messages/           UnreadProvider/useUnread (live navbar unread counter)
     Navbar/             Top navigation
     Reports/            ReportsProvider/useReports (live admin report badge)
+    ScrollToTop/         Scrolls to top on route change
     UserReports/        UserReportsProvider/useUserReports
     Theme/              ThemeProvider/useTheme + the dark/light toggle
     Toast/              ToastProvider/useToast + toast UI
@@ -74,6 +80,7 @@ src/
     listings/          Listings page/grid/filters/detail page, create/edit
                         modals, useListings hook, image compression helpers
     messages/          Inbox (MessagesPage) and chat thread (ChatThreadPage)
+    notFound/          404 page for unmatched routes
     profile/           Public and own profile page (incl. account deletion)
   lib/
     api/client.ts       Shared authenticated fetch wrapper (401 refresh-and-retry)
