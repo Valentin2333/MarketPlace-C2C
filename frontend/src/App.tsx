@@ -25,6 +25,7 @@ import ReportDetailsPage from "./features/admin/ReportDetailsPage";
 import UserReportDetailsPage from "./features/admin/UserReportDetailsPage";
 import BanGate from "./components/BanGate/BanGate";
 import RouteErrorBoundary from "./components/ErrorBoundary/RouteErrorBoundary";
+import NotFoundPage from "./features/notFound/NotFoundPage";
 
 export default function App() {
   return (
@@ -66,7 +67,7 @@ export default function App() {
         />
 
         <Route path="/" element={<Navigate to="/listings" replace />} />
-        <Route path="*" element={<Navigate to="/listings" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
       </RouteErrorBoundary>
       <Footer />
