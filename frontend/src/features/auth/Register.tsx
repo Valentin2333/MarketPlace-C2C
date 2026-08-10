@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth/useAuth";
 import { friendlyAuthError } from "../../lib/authErrors";
 import AuthHeader from "./AuthHeader";
+import PasswordInput from "../../components/PasswordInput/PasswordInput";
 import styles from "./Register.module.css";
 
 type RegisterFormData = {
@@ -108,9 +109,8 @@ export default function Register() {
 
             <div className={styles.field}>
               <label htmlFor="password">Password</label>
-              <input
+              <PasswordInput
                 id="password"
-                type="password"
                 placeholder="Min. 8 characters"
                 aria-invalid={!!errors.password}
                 {...register("password", {
@@ -130,9 +130,8 @@ export default function Register() {
 
             <div className={styles.field}>
               <label htmlFor="confirmPassword">Confirm password</label>
-              <input
+              <PasswordInput
                 id="confirmPassword"
-                type="password"
                 placeholder="Repeat your password"
                 aria-invalid={!!errors.confirmPassword}
                 {...register("confirmPassword", {

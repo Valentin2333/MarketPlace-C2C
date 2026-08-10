@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth/useAuth";
 import { resendVerificationRequest } from "../../lib/auth/authApi";
 import AuthHeader from "./AuthHeader";
+import PasswordInput from "../../components/PasswordInput/PasswordInput";
 import styles from "./Login.module.css";
 
 type LoginFormData = {
@@ -149,9 +150,8 @@ export default function Login() {
                   Forgot password?
                 </Link>
               </div>
-              <input
+              <PasswordInput
                 id="password"
-                type="password"
                 placeholder="Your password"
                 aria-invalid={!!errors.password}
                 {...register("password", {
