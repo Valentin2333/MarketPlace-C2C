@@ -13,6 +13,7 @@ import {
 } from "../../lib/admin/adminApi";
 import { updateUserRole } from "../../lib/users/usersApi";
 import ConfirmModal from "../listings/ConfirmModal";
+import Spinner from "../../components/Spinner/Spinner";
 import styles from "./AdminPanel.module.css";
 
 type UserLite = AdminUser;
@@ -311,7 +312,10 @@ export default function AdminPanel() {
   if (!ready) {
     return (
       <div className={styles.page}>
-        <div className={styles.state}>Loading…</div>
+        <div className={styles.state}>
+          <Spinner size="lg" />
+          <span>Loading…</span>
+        </div>
       </div>
     );
   }
@@ -402,7 +406,10 @@ export default function AdminPanel() {
                 <>
                   {searchResults.map(renderRow)}
                   {searchLoading && (
-                    <div className={styles.hint}>Searching…</div>
+                    <div className={`${styles.hint} ${styles.hintLoading}`}>
+                      <Spinner size="sm" />
+                      <span>Searching…</span>
+                    </div>
                   )}
                   {!searchLoading && searchResults.length === 0 && (
                     <div className={styles.hint}>No users found.</div>
@@ -411,7 +418,12 @@ export default function AdminPanel() {
               ) : (
                 <>
                   {users.map(renderRow)}
-                  {loadingUsers && <div className={styles.hint}>Loading…</div>}
+                  {loadingUsers && (
+                    <div className={`${styles.hint} ${styles.hintLoading}`}>
+                      <Spinner size="sm" />
+                      <span>Loading…</span>
+                    </div>
+                  )}
                   {!loadingUsers && !hasMore && users.length === 0 && (
                     <div className={styles.hint}>
                       {userFilter === "banned"

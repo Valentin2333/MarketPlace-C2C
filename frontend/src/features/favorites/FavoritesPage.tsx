@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { fetchListings, type ListingSummary } from '../../lib/listings/listingsApi'
 import { useFavorites } from '../../components/Favorites/useFavorites'
 import ListingCard from '../../components/ListingCard/ListingCard'
+import Spinner from '../../components/Spinner/Spinner'
 import styles from './FavoritesPage.module.css'
 
 export default function FavoritesPage() {
@@ -50,7 +51,10 @@ export default function FavoritesPage() {
       <div className={styles.page}>
         <div className={styles.container}>
           <h1 className={styles.heading}>Favorites</h1>
-          <div className={styles.state}>Loading…</div>
+          <div className={styles.state}>
+            <Spinner size="lg" />
+            <span>Loading…</span>
+          </div>
         </div>
       </div>
     )

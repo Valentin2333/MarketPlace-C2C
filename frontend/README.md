@@ -67,8 +67,10 @@ src/
     ListingCard/        Single listing card used in the listings grid
     Messages/           UnreadProvider/useUnread (live navbar unread counter)
     Navbar/             Top navigation
+    PasswordInput/      Password field with an inline show/hide toggle
     Reports/            ReportsProvider/useReports (live admin report badge)
     ScrollToTop/         Scrolls to top on route change
+    Spinner/             Loading spinner (sm/md/lg), used in every loading state
     UserReports/        UserReportsProvider/useUserReports
     Theme/              ThemeProvider/useTheme + the dark/light toggle
     Toast/              ToastProvider/useToast + toast UI

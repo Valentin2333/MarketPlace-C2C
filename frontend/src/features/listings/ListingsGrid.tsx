@@ -1,5 +1,6 @@
 import type { RefObject } from "react";
 import ListingCard from "../../components/ListingCard/ListingCard";
+import Spinner from "../../components/Spinner/Spinner";
 import type { ListingRow } from "./useListings";
 import styles from "./ListingsGrid.module.css";
 
@@ -36,7 +37,12 @@ export default function ListingsGrid({
       {hasMore && (
         <div ref={sentinelRef} className={styles.sentinel} aria-hidden="true" />
       )}
-      {loadingMore && <div className={styles.loadingMore}>Loading more…</div>}
+      {loadingMore && (
+        <div className={styles.loadingMore}>
+          <Spinner size="sm" />
+          <span>Loading more…</span>
+        </div>
+      )}
     </>
   );
 }

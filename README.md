@@ -25,7 +25,7 @@ This is a monorepo: the frontend lives in [`frontend/`](./frontend), the backend
 - **Admin panel** - User management (search, ban/unban) and live-updating reported-listings/reported-users review.
 - **Ban gate** - Banned users see a dedicated suspended-account page instead of the app.
 - **404 page and error boundaries** - Unmatched routes get a proper not-found page instead of silently redirecting; a render error in one page shows a contained "something went wrong" card (with a retry) instead of blanking the whole app.
-- **Dark / light theme toggle**, **toast notifications**, and info pages (FAQ, Terms, Privacy).
+- **Dark / light theme toggle**, **toast notifications**, loading spinners, a password visibility toggle, and info pages (FAQ, Terms, Privacy).
 
 ## Tech stack
 

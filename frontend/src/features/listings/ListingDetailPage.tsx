@@ -15,6 +15,7 @@ import EditListingModal from "./EditListingModal";
 import ConfirmModal from "./ConfirmModal";
 import ReportListingModal from "./ReportListingModal";
 import FavoriteButton from "../../components/Favorites/FavoriteButton";
+import Spinner from "../../components/Spinner/Spinner";
 
 import styles from "./ListingDetailPage.module.css";
 
@@ -95,7 +96,10 @@ export default function ListingDetailPage() {
   if (loading) {
     return (
       <div className={styles.page}>
-        <div className={styles.state}>Loading…</div>
+        <div className={styles.state}>
+          <Spinner size="lg" />
+          <span>Loading…</span>
+        </div>
       </div>
     );
   }

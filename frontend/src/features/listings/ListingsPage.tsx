@@ -2,6 +2,7 @@ import ListingsToolbar from "./ListingsToolbar";
 import ListingsGrid from "./ListingsGrid";
 import FiltersDrawer from "./FiltersDrawer";
 import { useListings } from "./useListings";
+import Spinner from "../../components/Spinner/Spinner";
 import styles from "./ListingsPage.module.css";
 
 export default function ListingsPage() {
@@ -55,7 +56,10 @@ export default function ListingsPage() {
         )}
 
         {loading ? (
-          <div className={styles.state}>Loading listings…</div>
+          <div className={styles.state}>
+            <Spinner size="lg" />
+            <span>Loading listings…</span>
+          </div>
         ) : error ? (
           <div className={styles.stateError}>{error}</div>
         ) : listings.length === 0 ? (

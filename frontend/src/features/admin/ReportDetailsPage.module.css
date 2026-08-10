@@ -16,6 +16,10 @@
   padding: var(--space-12) 0;
   text-align: center;
   color: var(--color-text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 .back {

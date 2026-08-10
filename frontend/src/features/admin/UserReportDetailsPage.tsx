@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { fetchUserReportDetail } from "../../lib/admin/adminApi";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { useUserReports } from "../../components/UserReports/useUserReports";
+import Spinner from "../../components/Spinner/Spinner";
 import styles from "./ReportDetailsPage.module.css";
 
 type ReportRow = {
@@ -94,7 +95,10 @@ export default function UserReportDetailsPage() {
   if (!authReady || !isAdmin) {
     return (
       <div className={styles.page}>
-        <div className={styles.state}>Loading…</div>
+        <div className={styles.state}>
+          <Spinner size="lg" />
+          <span>Loading…</span>
+        </div>
       </div>
     );
   }
@@ -130,7 +134,10 @@ export default function UserReportDetailsPage() {
         </h2>
 
         {loading ? (
-          <div className={styles.state}>Loading…</div>
+          <div className={styles.state}>
+            <Spinner size="md" />
+            <span>Loading…</span>
+          </div>
         ) : reports.length === 0 ? (
           <div className={styles.state}>No reports for this user.</div>
         ) : (
