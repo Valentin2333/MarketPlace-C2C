@@ -7,6 +7,7 @@ import { formatDate } from "../../lib/format";
 import { useToast } from "../../components/Toast/useToast";
 import { useUnread } from "../../components/Messages/useUnread";
 import ConfirmModal from "../listings/ConfirmModal";
+import Spinner from "../../components/Spinner/Spinner";
 import styles from "./MessagesPage.module.css";
 
 type ProfileLite = {
@@ -95,7 +96,10 @@ export default function MessagesPage() {
   if (loading) {
     return (
       <div className={styles.page}>
-        <div className={styles.state}>Loading…</div>
+        <div className={styles.state}>
+          <Spinner size="lg" />
+          <span>Loading…</span>
+        </div>
       </div>
     );
   }

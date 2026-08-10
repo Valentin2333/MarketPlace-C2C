@@ -1,0 +1,45 @@
+/* Spinner.module.css */
+
+.spinner {
+  display: inline-block;
+  animation: spin 0.8s linear infinite;
+  color: var(--color-primary);
+}
+
+.track {
+  opacity: 0.2;
+}
+
+.arc {
+  opacity: 0.9;
+}
+
+.sm {
+  width: 14px;
+  height: 14px;
+}
+
+.md {
+  width: 24px;
+  height: 24px;
+}
+
+.lg {
+  width: 36px;
+  height: 36px;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2.4s;
+  }
+}

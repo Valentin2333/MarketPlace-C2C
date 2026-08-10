@@ -14,6 +14,7 @@ import { useCurrentUser } from "../../lib/useCurrentUser";
 import { useToast } from "../../components/Toast/useToast";
 import { useUnread } from "../../components/Messages/useUnread";
 import ConfirmModal from "../listings/ConfirmModal";
+import Spinner from "../../components/Spinner/Spinner";
 import styles from "./ChatThreadPage.module.css";
 
 type ProfileLite = {
@@ -280,7 +281,10 @@ export default function ChatThreadPage() {
 
           <div className={styles.messages} ref={messagesRef}>
             {loading ? (
-              <div className={styles.state}>Loading…</div>
+              <div className={styles.state}>
+                <Spinner size="md" />
+                <span>Loading…</span>
+              </div>
             ) : messages.length === 0 ? (
               <div className={styles.state}>No messages yet. Say hello 👋</div>
             ) : (

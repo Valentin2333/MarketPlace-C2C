@@ -5,6 +5,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { useAuth } from "../../lib/auth/useAuth";
 import { requestPasswordResetRequest } from "../../lib/auth/authApi";
+import Spinner from "../../components/Spinner/Spinner";
 import {
   fetchPublicUser,
   updateOwnProfile,
@@ -275,7 +276,10 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className={styles.page}>
-        <div className={styles.state}>Loading profile…</div>
+        <div className={styles.state}>
+          <Spinner size="lg" />
+          <span>Loading profile…</span>
+        </div>
       </div>
     );
   }

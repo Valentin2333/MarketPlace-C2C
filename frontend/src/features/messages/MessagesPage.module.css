@@ -23,6 +23,10 @@
   padding: var(--space-16) var(--container-pad);
   text-align: center;
   color: var(--color-text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 .empty {

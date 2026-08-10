@@ -3,6 +3,7 @@ import { Link, useParams, useNavigationType } from "react-router-dom";
 import { fetchListings, fetchPublicUser } from "../../lib/listings/listingsApi";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import ListingCard from "../../components/ListingCard/ListingCard";
+import Spinner from "../../components/Spinner/Spinner";
 import styles from "./UserListingsPage.module.css";
 
 type UserListing = {
@@ -93,7 +94,10 @@ export default function UserListingsPage() {
         <h1 className={styles.heading}>{heading}</h1>
 
         {loading ? (
-          <div className={styles.state}>Loading…</div>
+          <div className={styles.state}>
+            <Spinner size="lg" />
+            <span>Loading…</span>
+          </div>
         ) : error ? (
           <div className={styles.stateError}>{error}</div>
         ) : listings.length === 0 ? (
