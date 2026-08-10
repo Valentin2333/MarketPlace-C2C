@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { confirmPasswordResetRequest } from "../../lib/auth/authApi";
 import AuthHeader from "./AuthHeader";
+import PasswordInput from "../../components/PasswordInput/PasswordInput";
 import styles from "./ResetPassword.module.css";
 
 type ResetFormData = {
@@ -83,9 +84,8 @@ export default function ResetPassword() {
 
               <div className={styles.field}>
                 <label htmlFor="password">New password</label>
-                <input
+                <PasswordInput
                   id="password"
-                  type="password"
                   placeholder="Min. 8 characters"
                   aria-invalid={!!errors.password}
                   {...register("password", {
@@ -105,9 +105,8 @@ export default function ResetPassword() {
 
               <div className={styles.field}>
                 <label htmlFor="confirmPassword">Confirm new password</label>
-                <input
+                <PasswordInput
                   id="confirmPassword"
-                  type="password"
                   placeholder="Repeat your password"
                   aria-invalid={!!errors.confirmPassword}
                   {...register("confirmPassword", {
