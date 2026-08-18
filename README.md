@@ -12,7 +12,7 @@ This is a monorepo: the frontend lives in [`frontend/`](./frontend), the backend
 
 ## Features
 
-- **Authentication** - Email/password registration and login with JWT access tokens and rotating refresh tokens, logout, and a full forgot-password/reset-password flow via email.
+- **Authentication** - Email/password registration and login with JWT access tokens and rotating refresh tokens, logout, and a full forgot-password/reset-password flow via email. Also **Sign in with Google** (Google Identity Services), which links to an existing account when the email matches.
 - **User profiles** - Public profile pages and an editable own-profile view: display name, city, avatar upload, password reset, and permanent account deletion (cascades to everything owned).
 - **Browse listings** - Full-text search, filtering (category/city/price), sorting, and infinite scroll with scroll-position restoration.
 - **Live new-listing notice** - A small banner appears for anyone browsing (logged in or not) the moment someone else publishes a new listing, via WebSocket.
@@ -34,7 +34,7 @@ This is a monorepo: the frontend lives in [`frontend/`](./frontend), the backend
 | Language | TypeScript | TypeScript |
 | Framework | React 19 | Express 5 |
 | Build/run | Vite | tsx (dev), tsc (build) |
-| Auth | Custom JWT-based context/hooks | bcrypt password hashing, JWT + rotating refresh tokens |
+| Auth | Custom JWT-based context/hooks, Google Identity Services button | bcrypt password hashing, JWT + rotating refresh tokens, Google ID-token verification (`google-auth-library`) |
 | Database | - | Postgres via `pg`, hosted on Neon |
 | File storage | - | Cloudflare R2 (S3-compatible) |
 | Email | - | Gmail API over HTTPS (OAuth2) — not SMTP, since Render's free tier blocks outbound SMTP ports |

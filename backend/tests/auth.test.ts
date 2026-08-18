@@ -2,7 +2,13 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import request from "supertest";
 import app from "../src/app.js";
 import { sendEmail } from "../src/email/gmail.js";
+import { verifyGoogleIdToken } from "../src/auth/google.js";
+import { pool } from "../src/db/pool.js";
 import { resetDatabase, registerTestUser } from "./helpers.js";
+
+vi.mock("../src/auth/google.js", () => ({
+  verifyGoogleIdToken: vi.fn(),
+}));
 
 function extractResetToken(html: string): string {
   const match = html.match(/href="([^"]+)"/);
@@ -29,7 +35,6 @@ describe("POST /auth/register", () => {
     expect(response.body.user.role).toBe("user");
     expect(response.body.user.emailVerified).toBe(false);
     expect(response.body.user).not.toHaveProperty("password_hash");
-    // Tokens aren't issued until the email is verified.
     expect(response.body).not.toHaveProperty("accessToken");
     expect(response.body).not.toHaveProperty("refreshToken");
     expect(sendEmail).toHaveBeenCalledOnce();
@@ -98,6 +103,108 @@ describe("POST /auth/login", () => {
       .send({ email: "ghost@example.com", password: "testpassword123" });
 
     expect(response.status).toBe(401);
+  });
+});
+
+describe("POST /auth/google", () => {
+  beforeEach(() => {
+    vi.mocked(verifyGoogleIdToken).mockReset();
+    return resetDatabase();
+  });
+
+  it("creates a new, verified user on first Google sign-in", async () => {
+    vi.mocked(verifyGoogleIdToken).mockResolvedValue({
+      googleId: "google-sub-1",
+      email: "New.Google@example.com",
+      emailVerified: true,
+      name: "Google User",
+      picture: "https://example.com/avatar.png",
+    });
+
+    const response = await request(app)
+      .post("/auth/google")
+      .send({ credential: "fake-id-token" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.user.email).toBe("new.google@example.com");
+    expect(response.body.user.name).toBe("Google User");
+    expect(response.body.user.emailVerified).toBe(true);
+    expect(response.body).toHaveProperty("accessToken");
+    expect(response.body).toHaveProperty("refreshToken");
+    expect(response.body.user).not.toHaveProperty("password_hash");
+  });
+
+  it("returns the same user on a second Google sign-in", async () => {
+    vi.mocked(verifyGoogleIdToken).mockResolvedValue({
+      googleId: "google-sub-2",
+      email: "repeat@example.com",
+      emailVerified: true,
+    });
+
+    const first = await request(app)
+      .post("/auth/google")
+      .send({ credential: "fake-id-token" });
+    const second = await request(app)
+      .post("/auth/google")
+      .send({ credential: "fake-id-token" });
+
+    expect(second.status).toBe(200);
+    expect(second.body.user.id).toBe(first.body.user.id);
+
+    const { rows } = await pool.query("SELECT COUNT(*)::int AS n FROM users");
+    expect(rows[0].n).toBe(1);
+  });
+
+  it("links Google to an existing password account with the same email", async () => {
+    const existing = await registerTestUser({ email: "linkme@example.com" });
+
+    vi.mocked(verifyGoogleIdToken).mockResolvedValue({
+      googleId: "google-sub-3",
+      email: "linkme@example.com",
+      emailVerified: true,
+    });
+
+    const response = await request(app)
+      .post("/auth/google")
+      .send({ credential: "fake-id-token" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.user.id).toBe(existing.id);
+
+    const { rows } = await pool.query(
+      "SELECT google_id FROM users WHERE id = $1",
+      [existing.id],
+    );
+    expect(rows[0].google_id).toBe("google-sub-3");
+  });
+
+  it("rejects a missing credential", async () => {
+    const response = await request(app).post("/auth/google").send({});
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects an invalid Google credential", async () => {
+    vi.mocked(verifyGoogleIdToken).mockRejectedValue(new Error("bad token"));
+
+    const response = await request(app)
+      .post("/auth/google")
+      .send({ credential: "bad-token" });
+
+    expect(response.status).toBe(401);
+  });
+
+  it("rejects a Google account whose email is not verified", async () => {
+    vi.mocked(verifyGoogleIdToken).mockResolvedValue({
+      googleId: "google-sub-4",
+      email: "unverified@example.com",
+      emailVerified: false,
+    });
+
+    const response = await request(app)
+      .post("/auth/google")
+      .send({ credential: "fake-id-token" });
+
+    expect(response.status).toBe(403);
   });
 });
 
@@ -202,10 +309,6 @@ describe("POST /auth/refresh", () => {
 
     expect(response.status).toBe(200);
     expect(typeof response.body.accessToken).toBe("string");
-    // Refresh tokens are random and must always differ. Access tokens are
-    // JWTs signed from the same {sub, role} claims with the same expiry —
-    // if issued within the same second, they're legitimately byte-identical
-    // (JWTs are deterministic), so we don't assert uniqueness on those.
     expect(response.body.refreshToken).not.toBe(user.refreshToken);
   });
 

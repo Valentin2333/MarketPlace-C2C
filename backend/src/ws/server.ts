@@ -66,9 +66,6 @@ export function initWebSocketServer(httpServer: Server): void {
         userId = payload.sub;
         role = payload.role;
       } catch {
-        // Invalid or expired token: fall back to an anonymous connection
-        // rather than rejecting outright, since public events (like new
-        // listings) are still valid for this visitor to receive.
       }
     }
 

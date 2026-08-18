@@ -1,0 +1,7 @@
+.wrap {
+  display: flex;
+  justify-content: center;
+  /* Reserve height so the layout doesn't jump while GIS renders the button. */
+  min-height: 44px;
+  color-scheme: light;
+}

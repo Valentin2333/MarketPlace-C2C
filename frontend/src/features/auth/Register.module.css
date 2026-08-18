@@ -137,6 +137,24 @@
   box-shadow: var(--glow-sm);
 }
 
+/* Divider between the form and social sign-in */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-5) 0;
+  color: var(--color-text-faint);
+  font-size: var(--text-xs);
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-border, rgba(148, 163, 184, 0.2));
+}
+
 /* Footer */
 .footer {
   margin-top: var(--space-6);

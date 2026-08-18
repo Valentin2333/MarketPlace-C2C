@@ -35,7 +35,6 @@ function openSocket(): void {
       const { event: name, payload } = JSON.parse(event.data);
       dispatch(name, payload);
     } catch {
-      // ignore malformed payloads
     }
   };
 
@@ -56,8 +55,6 @@ function scheduleReconnect(): void {
     if (!active) return;
 
     if (getAccessToken()) {
-      // A token exists but the connection dropped anyway — it may have
-      // expired. Refresh defensively before retrying.
       await refreshAccessToken().catch(() => {});
     }
     openSocket();
@@ -65,8 +62,6 @@ function scheduleReconnect(): void {
   }, reconnectDelay);
 }
 
-/** Connects (or reconnects, to pick up a changed auth state). Safe to call
- * whether or not the user is logged in — anonymous connections are valid. */
 export function connectWebSocket(): void {
   active = true;
   reconnectDelay = 1000;

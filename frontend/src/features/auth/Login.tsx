@@ -5,6 +5,7 @@ import { useAuth } from "../../lib/auth/useAuth";
 import { resendVerificationRequest } from "../../lib/auth/authApi";
 import AuthHeader from "./AuthHeader";
 import PasswordInput from "../../components/PasswordInput/PasswordInput";
+import GoogleSignInButton from "../../components/GoogleSignInButton/GoogleSignInButton";
 import styles from "./Login.module.css";
 
 type LoginFormData = {
@@ -20,7 +21,7 @@ type LocationState = {
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const state = (location.state as LocationState | null) ?? null;
 
   const [serverError, setServerError] = useState<string | null>(null);
@@ -61,6 +62,22 @@ export default function Login() {
     }
   };
 
+  const onGoogleCredential = async (credential: string) => {
+    setServerError(null);
+    setNeedsVerification(false);
+    setLoading(true);
+    try {
+      await loginWithGoogle(credential);
+      navigate("/listings");
+    } catch (err) {
+      setServerError(
+        err instanceof Error ? err.message : "Google sign-in failed.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const onResend = async () => {
     const email = getValues("email");
     if (!email) return;
@@ -70,9 +87,6 @@ export default function Login() {
       await resendVerificationRequest(email);
       setResendSent(true);
     } catch {
-      // Resend failures aren't shown separately - the endpoint always
-      // responds successfully by design, so this only fails on network
-      // issues, which the person will notice from the lack of email anyway.
     } finally {
       setResending(false);
     }
@@ -169,6 +183,16 @@ export default function Login() {
               {loading ? "Signing in..." : "Sign in"}
             </button>
           </form>
+
+          <div className={styles.divider}>
+            <span>or</span>
+          </div>
+
+          <GoogleSignInButton
+            text="signin_with"
+            onCredential={onGoogleCredential}
+            onError={setServerError}
+          />
 
           <p className={styles.footer}>
             Don't have an account? <Link to="/register">Create one</Link>

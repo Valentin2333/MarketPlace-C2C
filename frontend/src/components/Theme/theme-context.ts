@@ -10,6 +10,5 @@ export type ThemeApi = {
 
 export const ThemeContext = createContext<ThemeApi | null>(null);
 
-/* Shared so the provider and the index.html boot script agree. */
 export const THEME_STORAGE_KEY = "theme";
 export const DEFAULT_THEME: Theme = "dark";

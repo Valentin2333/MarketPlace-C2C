@@ -1,10 +1,5 @@
 import rateLimit from "express-rate-limit";
 
-// The integration test suite reuses a single supertest "IP" across dozens
-// of requests in the same run, so these limits would otherwise start
-// rejecting registrations/logins partway through the suite regardless of
-// what the tests are actually exercising. Vitest sets NODE_ENV=test by
-// default, so this only relaxes limits for the test run, not dev/prod.
 const skipInTests = (): boolean => process.env.NODE_ENV === "test";
 
 export const loginLimiter = rateLimit({

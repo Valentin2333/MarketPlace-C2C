@@ -2,12 +2,16 @@ import { Router } from "express";
 import {
   findUserByEmail,
   findUserById,
+  findUserByGoogleId,
   createUser,
+  createGoogleUser,
+  linkGoogleId,
   updateUserPassword,
   markEmailVerified,
   type User,
 } from "../db/users.js";
 import { hashPassword, comparePassword } from "./password.js";
+import { verifyGoogleIdToken } from "./google.js";
 import { signAuthToken } from "./jwt.js";
 import {
   issueRefreshToken,
@@ -120,9 +124,10 @@ router.post("/login", loginLimiter, async (req, res) => {
   }
 
   const user = await findUserByEmail(email.trim().toLowerCase());
-  const passwordMatches = user
-    ? await comparePassword(password, user.password_hash)
-    : false;
+  const passwordMatches =
+    user && user.password_hash
+      ? await comparePassword(password, user.password_hash)
+      : false;
 
   if (!user || !passwordMatches) {
     res.status(401).json({ error: "Invalid email or password" });
@@ -135,6 +140,51 @@ router.post("/login", loginLimiter, async (req, res) => {
       code: "EMAIL_NOT_VERIFIED",
     });
     return;
+  }
+
+  const tokens = await issueTokenPair(user);
+  res.json({ user: toPublicUser(user), ...tokens });
+});
+
+router.post("/google", loginLimiter, async (req, res) => {
+  const { credential } = req.body ?? {};
+
+  if (typeof credential !== "string" || credential.length === 0) {
+    res.status(400).json({ error: "credential is required" });
+    return;
+  }
+
+  let identity;
+  try {
+    identity = await verifyGoogleIdToken(credential);
+  } catch {
+    res.status(401).json({ error: "Invalid Google credential" });
+    return;
+  }
+
+  if (!identity.emailVerified) {
+    res.status(403).json({ error: "Your Google email is not verified" });
+    return;
+  }
+
+  const normalizedEmail = identity.email.trim().toLowerCase();
+
+  let user = await findUserByGoogleId(identity.googleId);
+
+  if (!user) {
+    const existing = await findUserByEmail(normalizedEmail);
+    if (existing) {
+      user = (await linkGoogleId(existing.id, identity.googleId)) ?? existing;
+    }
+  }
+
+  if (!user) {
+    user = await createGoogleUser({
+      email: normalizedEmail,
+      googleId: identity.googleId,
+      name: identity.name,
+      avatarUrl: identity.picture,
+    });
   }
 
   const tokens = await issueTokenPair(user);

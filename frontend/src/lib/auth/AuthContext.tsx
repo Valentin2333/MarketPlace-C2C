@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import {
   registerRequest,
   loginRequest,
+  googleLoginRequest,
   logoutRequest,
   meRequest,
   confirmEmailVerificationRequest,
@@ -53,10 +54,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     setUser(result.user);
   }, []);
 
-  // Registering no longer logs the user in automatically — the backend
-  // requires a verified email before issuing tokens, so this just creates
-  // the account. The caller (Register.tsx) sends them to the login page
-  // with a "check your email" message instead.
+  const loginWithGoogle = useCallback(async (credential: string) => {
+    const result = await googleLoginRequest(credential);
+    setTokens(result.accessToken, result.refreshToken);
+    setUser(result.user);
+  }, []);
+
   const register = useCallback(
     async (email: string, password: string, name?: string) => {
       await registerRequest({ email, password, name });
@@ -80,8 +83,24 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, ready, login, register, logout, completeEmailVerification }),
-    [user, ready, login, register, logout, completeEmailVerification],
+    () => ({
+      user,
+      ready,
+      login,
+      loginWithGoogle,
+      register,
+      logout,
+      completeEmailVerification,
+    }),
+    [
+      user,
+      ready,
+      login,
+      loginWithGoogle,
+      register,
+      logout,
+      completeEmailVerification,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

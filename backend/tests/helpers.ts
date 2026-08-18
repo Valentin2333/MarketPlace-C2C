@@ -46,11 +46,6 @@ function extractVerificationToken(html: string): string {
   return token;
 }
 
-// Registration only creates the account - the API requires a verified
-// email before it will issue tokens. This helper carries out both steps
-// (register, then confirm via the token from the mocked verification
-// email) so the rest of the suite can keep treating "register a test
-// user" as a single call that hands back a ready-to-use access token.
 export async function registerTestUser(
   overrides: { email?: string; password?: string; name?: string } = {},
 ): Promise<TestUser> {
@@ -87,9 +82,6 @@ export async function registerTestUser(
     );
   }
 
-  // Clear the mock so tests that assert on sendEmail call counts for
-  // their own actions (e.g. password reset) aren't tripped up by this
-  // setup step's verification email.
   vi.mocked(sendEmail).mockClear();
 
   return {

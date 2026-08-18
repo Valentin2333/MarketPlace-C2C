@@ -5,6 +5,7 @@ import { useAuth } from "../../lib/auth/useAuth";
 import { friendlyAuthError } from "../../lib/authErrors";
 import AuthHeader from "./AuthHeader";
 import PasswordInput from "../../components/PasswordInput/PasswordInput";
+import GoogleSignInButton from "../../components/GoogleSignInButton/GoogleSignInButton";
 import styles from "./Register.module.css";
 
 type RegisterFormData = {
@@ -16,7 +17,7 @@ type RegisterFormData = {
 
 export default function Register() {
   const navigate = useNavigate();
-  const { register: registerAccount } = useAuth();
+  const { register: registerAccount, loginWithGoogle } = useAuth();
   const [serverError, setServerError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -42,6 +43,21 @@ export default function Register() {
     } catch (err) {
       setServerError(
         friendlyAuthError(err instanceof Error ? err.message : ""),
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onGoogleCredential = async (credential: string) => {
+    setServerError(null);
+    setLoading(true);
+    try {
+      await loginWithGoogle(credential);
+      navigate("/listings");
+    } catch (err) {
+      setServerError(
+        err instanceof Error ? err.message : "Google sign-up failed.",
       );
     } finally {
       setLoading(false);
@@ -151,6 +167,16 @@ export default function Register() {
               {loading ? "Creating account..." : "Create account"}
             </button>
           </form>
+
+          <div className={styles.divider}>
+            <span>or</span>
+          </div>
+
+          <GoogleSignInButton
+            text="signup_with"
+            onCredential={onGoogleCredential}
+            onError={setServerError}
+          />
 
           <p className={styles.footer}>
             Already have an account? <Link to="/login">Sign in</Link>

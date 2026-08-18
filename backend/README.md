@@ -24,6 +24,7 @@ overall project overview.
 | `GMAIL_USER` | The Gmail address you'll send from |
 | `GMAIL_CLIENT_ID` / `GMAIL_CLIENT_SECRET` | An OAuth 2.0 Client ID (type "Web application") from [Google Cloud Console](https://console.cloud.google.com/apis/credentials), with the Gmail API enabled for that project and `http://localhost:3000/oauth2callback` added as an authorized redirect URI |
 | `GMAIL_REFRESH_TOKEN` | Run `npm run get-gmail-token` after setting the two values above — it opens a browser consent screen and prints the refresh token to save here |
+| `GOOGLE_CLIENT_ID` | OAuth 2.0 Client ID (type "Web application") used for **Sign in with Google** — the same value the frontend uses as `VITE_GOOGLE_CLIENT_ID`. Add your frontend origin (e.g. `http://localhost:5173`, and your production URL) under **Authorized JavaScript origins**. No client secret is needed — the backend only verifies the Google ID token's signature. This is a *separate* concern from the `GMAIL_*` credentials above, though both can live in the same Google Cloud project |
 | `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME` / `R2_PUBLIC_URL` | Cloudflare R2 bucket + an API token scoped to it |
 | `R2_STORAGE_LIMIT_GB` | Optional, defaults to `9.5` — total storage cap before uploads start getting rejected |
 
