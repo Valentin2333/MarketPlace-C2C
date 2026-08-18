@@ -52,6 +52,17 @@ export async function loginRequest(params: {
   return parseJsonOrThrow(response);
 }
 
+export async function googleLoginRequest(
+  credential: string,
+): Promise<{ user: PublicUser } & TokenPair> {
+  const response = await fetch(`${API_URL}/auth/google`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ credential }),
+  });
+  return parseJsonOrThrow(response);
+}
+
 export async function refreshRequest(
   refreshToken: string,
 ): Promise<TokenPair> {

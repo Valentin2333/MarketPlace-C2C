@@ -3,12 +3,13 @@ import { pool } from "./pool.js";
 export interface User {
   id: string;
   email: string;
-  password_hash: string;
+  password_hash: string | null;
   name: string | null;
   city: string | null;
   avatar_url: string | null;
   role: string;
   email_verified: boolean;
+  google_id: string | null;
   created_at: Date;
 }
 
@@ -102,6 +103,50 @@ export async function createUser(params: {
     [params.email, params.passwordHash, params.name ?? null],
   );
   return result.rows[0];
+}
+
+export async function findUserByGoogleId(
+  googleId: string,
+): Promise<User | null> {
+  const result = await pool.query<User>(
+    "SELECT * FROM users WHERE google_id = $1",
+    [googleId],
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function createGoogleUser(params: {
+  email: string;
+  googleId: string;
+  name?: string;
+  avatarUrl?: string;
+}): Promise<User> {
+  const result = await pool.query<User>(
+    `INSERT INTO users (email, google_id, name, avatar_url, email_verified)
+     VALUES ($1, $2, $3, $4, true)
+     RETURNING *`,
+    [
+      params.email,
+      params.googleId,
+      params.name ?? null,
+      params.avatarUrl ?? null,
+    ],
+  );
+  return result.rows[0];
+}
+
+export async function linkGoogleId(
+  userId: string,
+  googleId: string,
+): Promise<User | null> {
+  const result = await pool.query<User>(
+    `UPDATE users
+     SET google_id = $1, email_verified = true
+     WHERE id = $2
+     RETURNING *`,
+    [googleId, userId],
+  );
+  return result.rows[0] ?? null;
 }
 
 export async function updateUserPassword(

@@ -17,11 +17,6 @@ export default function VerifyEmail() {
   const attempted = useRef(false);
 
   useEffect(() => {
-    // Guard against StrictMode's double-invoke in dev firing this twice -
-    // the token is single-use, so a second attempt would otherwise always
-    // fail right after a successful first one. This ref is the only guard
-    // needed: it persists across the double-invoke, so exactly one of the
-    // two invocations actually runs, and its result is what updates state.
     if (attempted.current) return;
     attempted.current = true;
 

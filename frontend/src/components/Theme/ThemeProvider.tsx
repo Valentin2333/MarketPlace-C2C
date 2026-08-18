@@ -9,7 +9,6 @@ import type { Theme, ThemeApi } from "./theme-context";
 
 function readInitialTheme(): Theme {
   if (typeof document !== "undefined") {
-    // The boot script in index.html sets this before first paint.
     const attr = document.documentElement.getAttribute("data-theme");
     if (attr === "light" || attr === "dark") return attr;
   }
@@ -23,13 +22,11 @@ function readInitialTheme(): Theme {
 export default function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(readInitialTheme);
 
-  // Keep the document attribute and storage in sync with state.
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     try {
       localStorage.setItem(THEME_STORAGE_KEY, theme);
     } catch {
-      /* storage may be unavailable (private mode); theme still applies */
     }
   }, [theme]);
 

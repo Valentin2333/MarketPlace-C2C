@@ -64,11 +64,6 @@ describe("refreshAccessToken", () => {
     expect(clearTokens).toHaveBeenCalledOnce();
   });
 
-  // This is the scenario that used to break under React StrictMode: two
-  // call sites (AuthContext and client.ts's own 401 handler) racing to
-  // refresh at page load both consumed the single-use refresh token,
-  // so the second call always failed. Sharing one in-flight promise
-  // fixed it - this test guards against that regressing.
   it("shares a single in-flight request across concurrent callers", async () => {
     vi.mocked(getRefreshToken).mockReturnValue("old-refresh");
     let resolveRefresh!: (tokens: {

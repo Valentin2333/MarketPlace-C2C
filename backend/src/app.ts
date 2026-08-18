@@ -11,10 +11,6 @@ import messagesRouter from "./messages/routes.js";
 
 const app = express();
 
-// Render (and most hosts) sit behind a reverse proxy. Without this,
-// req.ip always resolves to the proxy's address, which would make rate
-// limiting either useless (fails open) or wrongly lump every visitor
-// together as one "IP".
 app.set("trust proxy", 1);
 
 app.use(

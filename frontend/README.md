@@ -19,8 +19,13 @@ Add to `.env` in this folder:
 
 ```env
 VITE_API_URL=http://localhost:4000
+VITE_GOOGLE_CLIENT_ID=<your-web-client-id>.apps.googleusercontent.com
 ```
-(or your deployed backend's URL, if you're not running it locally)
+(`VITE_API_URL` can be your deployed backend's URL if you're not running it
+locally. `VITE_GOOGLE_CLIENT_ID` enables the **Sign in with Google** button —
+it's the same OAuth "Web application" client ID the backend uses as
+`GOOGLE_CLIENT_ID`, and it's a public value, safe to expose. If it's omitted,
+the Google button simply doesn't render and email/password login still works.)
 
 ## Running
 
@@ -64,6 +69,7 @@ src/
                         (auto-resets per route), shared ErrorFallback UI
     Favorites/          FavoritesProvider/useFavorites + the heart button
     Footer/             Page footer
+    GoogleSignInButton/ Renders the Google Identity Services sign-in button
     ListingCard/        Single listing card used in the listings grid
     Messages/           UnreadProvider/useUnread (live navbar unread counter)
     Navbar/             Top navigation
@@ -113,5 +119,5 @@ Context + Provider + Hook pattern.
 - **Base directory**: `frontend`
 - **Build command**: `npm run build`
 - **Publish directory**: `frontend/dist` (or `dist`, if base directory is already set to `frontend`)
-- **Environment variables**: `VITE_API_URL` set to your deployed backend's URL
+- **Environment variables**: `VITE_API_URL` set to your deployed backend's URL, and `VITE_GOOGLE_CLIENT_ID` for Google sign-in. Vite bakes these in at build time, so after changing them trigger a fresh deploy ("Clear cache and deploy site").
 - `public/_redirects` sends all paths to `/index.html` so client-side routes resolve on direct navigation and refresh - make sure it's present in the build output.

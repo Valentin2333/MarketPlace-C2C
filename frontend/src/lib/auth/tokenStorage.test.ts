@@ -6,10 +6,6 @@ import {
   clearTokens,
 } from "./tokenStorage";
 
-// vitest's "node" environment has no localStorage, so this test file
-// stubs one in-memory. It's intentionally a plain object-backed fake
-// rather than a mocking library, since the real Storage interface is
-// tiny and this keeps the test independent of any DOM library.
 function createMemoryStorage(): Storage {
   const store = new Map<string, string>();
   return {

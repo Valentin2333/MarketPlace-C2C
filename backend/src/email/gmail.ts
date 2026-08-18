@@ -32,9 +32,6 @@ const GMAIL_REFRESH_TOKEN: string = (() => {
   return value;
 })();
 
-// This talks to Gmail over its real HTTPS API (port 443), not SMTP -
-// deliberately, since Render's free tier blocks outbound SMTP ports
-// (25/465/587) entirely. HTTPS is never blocked the same way.
 const oauth2Client = new OAuth2Client(GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET);
 oauth2Client.setCredentials({ refresh_token: GMAIL_REFRESH_TOKEN });
 
@@ -79,9 +76,6 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ raw }),
-      // Defensive: an HTTPS call to Google's API should be fast, but this
-      // caps worst-case latency so a Google-side hiccup can't hang the
-      // request the way blocked SMTP connections used to.
       signal: AbortSignal.timeout(10_000),
     },
   );

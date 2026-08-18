@@ -2,7 +2,6 @@ import { useTheme } from "./useTheme";
 import styles from "./ThemeToggle.module.css";
 
 type ThemeToggleProps = {
-  /** "icon" = compact square button (navbar); "full" = labelled row (drawer). */
   variant?: "icon" | "full";
   className?: string;
 };
@@ -49,7 +48,6 @@ export default function ThemeToggle({
   const { theme, toggleTheme } = useTheme();
 
   const isDark = theme === "dark";
-  // We show the theme the user will switch *to*.
   const targetLabel = isDark ? "Light mode" : "Dark mode";
   const ariaLabel = isDark ? "Switch to light theme" : "Switch to dark theme";
 
