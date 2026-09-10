@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same ref (e.g. rapid pushes to a PR branch).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend (test · build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  backend:
+    name: Backend (test · build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: marketplace_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Local service container speaks plain TCP, so disable SSL (see src/db/pool.ts).
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/marketplace_test?sslmode=disable
+      PORT: "4001"
+      FRONTEND_ORIGIN: http://localhost:5173
+      JWT_SECRET: test-secret-only-used-in-tests
+      # Email is mocked in tests, R2/Google are validated at import but never called.
+      GMAIL_USER: test@example.com
+      GMAIL_CLIENT_ID: dummy
+      GMAIL_CLIENT_SECRET: dummy
+      GMAIL_REFRESH_TOKEN: dummy
+      R2_ACCOUNT_ID: dummy
+      R2_ACCESS_KEY_ID: dummy
+      R2_SECRET_ACCESS_KEY: dummy
+      R2_BUCKET_NAME: dummy
+      R2_PUBLIC_URL: https://pub-dummy.r2.dev
+      GOOGLE_CLIENT_ID: dummy-google-verification-is-mocked-in-tests
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+      - run: npm run migrate:test
+      - run: npm test
+      - run: npm run build
