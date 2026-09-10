@@ -77,6 +77,7 @@ export default function GoogleSignInButton({
         shape: "rectangular",
         logo_alignment: "left",
         width,
+        locale: "en",
       });
     };
 

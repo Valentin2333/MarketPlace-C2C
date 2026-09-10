@@ -20,6 +20,7 @@ interface GoogleButtonConfig {
   shape?: "rectangular" | "pill" | "circle" | "square";
   logo_alignment?: "left" | "center";
   width?: number;
+  locale?: string;
 }
 
 declare global {
