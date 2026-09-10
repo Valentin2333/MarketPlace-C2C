@@ -8,6 +8,7 @@ import uploadsRouter from "./uploads/routes.js";
 import favoritesRouter from "./favorites/routes.js";
 import adminRouter from "./admin/routes.js";
 import messagesRouter from "./messages/routes.js";
+import turnstileRouter from "./turnstile/routes.js";
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use("/uploads", uploadsRouter);
 app.use("/favorites", favoritesRouter);
 app.use("/admin", adminRouter);
 app.use("/messages", messagesRouter);
+app.use("/turnstile", turnstileRouter);
 
 app.use(
   (

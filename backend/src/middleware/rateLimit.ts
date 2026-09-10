@@ -30,3 +30,12 @@ export const emailActionLimiter = rateLimit({
   skip: skipInTests,
   message: { error: "Too many requests. Please try again later." },
 });
+
+export const turnstileLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInTests,
+  message: { error: "Too many verification attempts. Please try again later." },
+});

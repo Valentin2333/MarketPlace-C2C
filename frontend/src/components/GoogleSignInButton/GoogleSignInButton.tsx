@@ -59,6 +59,26 @@ export default function GoogleSignInButton({
   useEffect(() => {
     if (!CLIENT_ID) return;
     let cancelled = false;
+    let observer: ResizeObserver | null = null;
+    let lastWidth = -1;
+
+    const renderButton = () => {
+      const container = containerRef.current;
+      if (!container || !window.google) return;
+      const width = Math.min(container.clientWidth || 360, 400);
+      if (width === lastWidth) return;
+      lastWidth = width;
+      container.innerHTML = "";
+      window.google.accounts.id.renderButton(container, {
+        type: "standard",
+        theme: "outline",
+        size: "large",
+        text,
+        shape: "rectangular",
+        logo_alignment: "left",
+        width,
+      });
+    };
 
     loadGsiScript()
       .then(() => {
@@ -69,16 +89,9 @@ export default function GoogleSignInButton({
           callback: (response) => onCredentialRef.current(response.credential),
         });
 
-        const width = Math.min(containerRef.current.clientWidth || 360, 400);
-        window.google.accounts.id.renderButton(containerRef.current, {
-          type: "standard",
-          theme: "outline",
-          size: "large",
-          text,
-          shape: "rectangular",
-          logo_alignment: "left",
-          width,
-        });
+        renderButton();
+        observer = new ResizeObserver(() => renderButton());
+        observer.observe(containerRef.current);
       })
       .catch(() => {
         if (!cancelled) {
@@ -88,6 +101,7 @@ export default function GoogleSignInButton({
 
     return () => {
       cancelled = true;
+      observer?.disconnect();
     };
   }, [text]);
 
