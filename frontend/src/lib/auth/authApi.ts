@@ -31,6 +31,7 @@ export async function registerRequest(params: {
   email: string;
   password: string;
   name?: string;
+  turnstileToken?: string;
 }): Promise<{ user: PublicUser }> {
   const response = await fetch(`${API_URL}/auth/register`, {
     method: "POST",
@@ -43,6 +44,7 @@ export async function registerRequest(params: {
 export async function loginRequest(params: {
   email: string;
   password: string;
+  turnstileToken?: string;
 }): Promise<{ user: PublicUser } & TokenPair> {
   const response = await fetch(`${API_URL}/auth/login`, {
     method: "POST",

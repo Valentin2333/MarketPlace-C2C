@@ -20,12 +20,18 @@ Add to `.env` in this folder:
 ```env
 VITE_API_URL=http://localhost:4000
 VITE_GOOGLE_CLIENT_ID=<your-web-client-id>.apps.googleusercontent.com
+VITE_TURNSTILE_SITE_KEY=<your-cloudflare-turnstile-site-key>
 ```
 (`VITE_API_URL` can be your deployed backend's URL if you're not running it
 locally. `VITE_GOOGLE_CLIENT_ID` enables the **Sign in with Google** button —
 it's the same OAuth "Web application" client ID the backend uses as
 `GOOGLE_CLIENT_ID`, and it's a public value, safe to expose. If it's omitted,
-the Google button simply doesn't render and email/password login still works.)
+the Google button simply doesn't render and email/password login still works.
+`VITE_TURNSTILE_SITE_KEY` enables the Cloudflare Turnstile "check you're human"
+bot protection — the gate shown once per browser session on load, plus a widget
+on the login and registration forms. It's the public site key that pairs with
+the backend's `TURNSTILE_SECRET_KEY`. If it's omitted, the gate and the form
+widgets are skipped entirely and the app loads as normal.)
 
 ## Running
 
@@ -75,6 +81,8 @@ src/
     Navbar/             Top navigation
     PasswordInput/      Password field with an inline show/hide toggle
     Reports/            ReportsProvider/useReports (live admin report badge)
+    RobotCheckGate/     Cloudflare Turnstile "are you human" on-load gate, plus
+                        the reusable TurnstileWidget used on the auth forms
     ScrollToTop/         Scrolls to top on route change
     Spinner/             Loading spinner (sm/md/lg), used in every loading state
     UserReports/        UserReportsProvider/useUserReports

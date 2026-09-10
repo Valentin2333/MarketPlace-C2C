@@ -8,6 +8,7 @@ import WebSocketConnector from "./lib/ws/WebSocketConnector";
 import FavoritesProvider from "./components/Favorites/FavoritesProvider";
 import ErrorBoundary from "./components/ErrorBoundary/ErrorBoundary";
 import ErrorFallback from "./components/ErrorBoundary/ErrorFallback";
+import RobotCheckGate from "./components/RobotCheckGate/RobotCheckGate";
 import "./styles/global.css";
 
 createRoot(document.getElementById("root")!).render(
@@ -16,14 +17,16 @@ createRoot(document.getElementById("root")!).render(
       fallback={(_error, reset) => <ErrorFallback onRetry={reset} />}
     >
       <ThemeProvider>
-        <ToastProvider>
-          <AuthProvider>
-            <WebSocketConnector />
-            <FavoritesProvider>
-              <App />
-            </FavoritesProvider>
-          </AuthProvider>
-        </ToastProvider>
+        <RobotCheckGate>
+          <ToastProvider>
+            <AuthProvider>
+              <WebSocketConnector />
+              <FavoritesProvider>
+                <App />
+              </FavoritesProvider>
+            </AuthProvider>
+          </ToastProvider>
+        </RobotCheckGate>
       </ThemeProvider>
     </ErrorBoundary>
   </StrictMode>,

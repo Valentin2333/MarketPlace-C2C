@@ -6,6 +6,8 @@ import { resendVerificationRequest } from "../../lib/auth/authApi";
 import AuthHeader from "./AuthHeader";
 import PasswordInput from "../../components/PasswordInput/PasswordInput";
 import GoogleSignInButton from "../../components/GoogleSignInButton/GoogleSignInButton";
+import TurnstileWidget from "../../components/RobotCheckGate/TurnstileWidget";
+import { TURNSTILE_SITE_KEY } from "../../components/RobotCheckGate/turnstileScript";
 import styles from "./Login.module.css";
 
 type LoginFormData = {
@@ -29,6 +31,8 @@ export default function Login() {
   const [needsVerification, setNeedsVerification] = useState(false);
   const [resendSent, setResendSent] = useState(false);
   const [resending, setResending] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileKey, setTurnstileKey] = useState(0);
 
   const {
     register,
@@ -40,13 +44,18 @@ export default function Login() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
+    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+      setServerError("Please wait for the human verification to finish.");
+      return;
+    }
+
     setLoading(true);
     setServerError(null);
     setNeedsVerification(false);
     setResendSent(false);
 
     try {
-      await login(data.email, data.password);
+      await login(data.email, data.password, turnstileToken ?? undefined);
       navigate("/listings");
     } catch (err) {
       const code = (err as { code?: string } | undefined)?.code;
@@ -57,6 +66,8 @@ export default function Login() {
           err instanceof Error ? err.message : "Invalid email or password.",
         );
       }
+      setTurnstileToken(null);
+      setTurnstileKey((k) => k + 1);
     } finally {
       setLoading(false);
     }
@@ -136,6 +147,14 @@ export default function Login() {
                 )}
               </div>
             )}
+
+            <TurnstileWidget
+              onToken={setTurnstileToken}
+              onError={() =>
+                setServerError("Verification failed. Please try again.")
+              }
+              resetSignal={turnstileKey}
+            />
 
             <div className={styles.field}>
               <label htmlFor="email">Email</label>

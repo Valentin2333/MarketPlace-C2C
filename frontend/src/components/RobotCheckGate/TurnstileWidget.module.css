@@ -1,0 +1,17 @@
+/* TurnstileWidget.module.css */
+
+.widget {
+  width: 100%;
+  min-height: 65px;
+  box-sizing: border-box;
+  /* A few px of slack so the widget's own right border isn't clipped by the
+     wrapper (the flexible widget renders a hair wider than its container). */
+  padding: 0 3px;
+  /* Clips the scaled widget's extra layout box on narrow screens so it can't
+     add horizontal overflow to the page. */
+  overflow: hidden;
+}
+
+.inner {
+  width: 100%;
+}

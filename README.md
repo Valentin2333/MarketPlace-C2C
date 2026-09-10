@@ -24,6 +24,7 @@ This is a monorepo: the frontend lives in [`frontend/`](./frontend), the backend
 - **Reporting listings and users** - Duplicate reports are blocked; reports show up live in the admin panel.
 - **Admin panel** - User management (search, ban/unban) and live-updating reported-listings/reported-users review.
 - **Ban gate** - Banned users see a dedicated suspended-account page instead of the app.
+- **Bot check** - A Cloudflare Turnstile "check you're human" gate shows once per browser session on first load, and the login and registration forms each carry their own Turnstile widget. Every token is verified server-side (the gate before the app unlocks; a fresh token on each `/auth/login` and `/auth/register` request) so it can't be bypassed by skipping the frontend. Skipped automatically when the Turnstile keys aren't configured.
 - **404 page and error boundaries** - Unmatched routes get a proper not-found page instead of silently redirecting; a render error in one page shows a contained "something went wrong" card (with a retry) instead of blanking the whole app.
 - **Dark / light theme toggle**, **toast notifications**, loading spinners, a password visibility toggle, and info pages (FAQ, Terms, Privacy).
 

@@ -48,11 +48,14 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const result = await loginRequest({ email, password });
-    setTokens(result.accessToken, result.refreshToken);
-    setUser(result.user);
-  }, []);
+  const login = useCallback(
+    async (email: string, password: string, turnstileToken?: string) => {
+      const result = await loginRequest({ email, password, turnstileToken });
+      setTokens(result.accessToken, result.refreshToken);
+      setUser(result.user);
+    },
+    [],
+  );
 
   const loginWithGoogle = useCallback(async (credential: string) => {
     const result = await googleLoginRequest(credential);
@@ -61,8 +64,13 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const register = useCallback(
-    async (email: string, password: string, name?: string) => {
-      await registerRequest({ email, password, name });
+    async (
+      email: string,
+      password: string,
+      name?: string,
+      turnstileToken?: string,
+    ) => {
+      await registerRequest({ email, password, name, turnstileToken });
     },
     [],
   );

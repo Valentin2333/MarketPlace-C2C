@@ -37,6 +37,7 @@ import {
   registerLimiter,
   emailActionLimiter,
 } from "../middleware/rateLimit.js";
+import { requireTurnstile } from "../middleware/requireTurnstile.js";
 
 const router = Router();
 
@@ -80,7 +81,7 @@ async function sendVerificationEmail(user: User): Promise<void> {
   });
 }
 
-router.post("/register", registerLimiter, async (req, res) => {
+router.post("/register", registerLimiter, requireTurnstile, async (req, res) => {
   const { email, password, name } = req.body ?? {};
 
   if (typeof email !== "string" || !isValidEmail(email)) {
@@ -115,7 +116,7 @@ router.post("/register", registerLimiter, async (req, res) => {
   res.status(201).json({ user: toPublicUser(user) });
 });
 
-router.post("/login", loginLimiter, async (req, res) => {
+router.post("/login", loginLimiter, requireTurnstile, async (req, res) => {
   const { email, password } = req.body ?? {};
 
   if (typeof email !== "string" || typeof password !== "string") {

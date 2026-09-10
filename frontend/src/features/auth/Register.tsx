@@ -6,6 +6,8 @@ import { friendlyAuthError } from "../../lib/authErrors";
 import AuthHeader from "./AuthHeader";
 import PasswordInput from "../../components/PasswordInput/PasswordInput";
 import GoogleSignInButton from "../../components/GoogleSignInButton/GoogleSignInButton";
+import TurnstileWidget from "../../components/RobotCheckGate/TurnstileWidget";
+import { TURNSTILE_SITE_KEY } from "../../components/RobotCheckGate/turnstileScript";
 import styles from "./Register.module.css";
 
 type RegisterFormData = {
@@ -20,6 +22,8 @@ export default function Register() {
   const { register: registerAccount, loginWithGoogle } = useAuth();
   const [serverError, setServerError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileKey, setTurnstileKey] = useState(0);
 
   const {
     register,
@@ -29,11 +33,21 @@ export default function Register() {
   } = useForm<RegisterFormData>();
 
   const onSubmit = async (data: RegisterFormData) => {
+    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+      setServerError("Please wait for the human verification to finish.");
+      return;
+    }
+
     setLoading(true);
     setServerError(null);
 
     try {
-      await registerAccount(data.email, data.password, data.name);
+      await registerAccount(
+        data.email,
+        data.password,
+        data.name,
+        turnstileToken ?? undefined,
+      );
       navigate("/login", {
         state: {
           justRegistered: true,
@@ -44,6 +58,8 @@ export default function Register() {
       setServerError(
         friendlyAuthError(err instanceof Error ? err.message : ""),
       );
+      setTurnstileToken(null);
+      setTurnstileKey((k) => k + 1);
     } finally {
       setLoading(false);
     }
@@ -81,6 +97,14 @@ export default function Register() {
             {serverError && (
               <div className={styles.serverError}>{serverError}</div>
             )}
+
+            <TurnstileWidget
+              onToken={setTurnstileToken}
+              onError={() =>
+                setServerError("Verification failed. Please try again.")
+              }
+              resetSignal={turnstileKey}
+            />
 
             <div className={styles.field}>
               <label htmlFor="name">Full name</label>
