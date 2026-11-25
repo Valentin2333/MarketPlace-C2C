@@ -9,6 +9,7 @@ type ListingCardProps = {
   price: number | null;
   city: string | null;
   imageUrl: string | null;
+  sold?: boolean;
   onClick?: () => void;
 };
 
@@ -18,17 +19,19 @@ export default function ListingCard({
   price,
   city,
   imageUrl,
+  sold = false,
   onClick,
 }: ListingCardProps) {
   return (
     <div className={styles.root}>
       <Link to={`/listings/${id}`} className={styles.card} onClick={onClick}>
-        <div className={styles.imageWrap}>
+        <div className={`${styles.imageWrap} ${sold ? styles.imageSold : ""}`}>
           {imageUrl ? (
             <img src={imageUrl} alt={title} loading="lazy" />
           ) : (
             <div className={styles.placeholder}>No image</div>
           )}
+          {sold && <span className={styles.soldBanner}>Sold</span>}
         </div>
 
         <div className={styles.body}>

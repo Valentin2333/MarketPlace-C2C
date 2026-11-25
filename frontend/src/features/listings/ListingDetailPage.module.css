@@ -288,9 +288,16 @@
   }
 }
 
+@media (max-width: 400px) {
+  .page {
+    padding: var(--space-6) var(--space-4) var(--space-12);
+  }
+}
+
 /* Owner actions */
 .ownerActions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-3);
   margin-top: var(--space-4);
 }
@@ -316,6 +323,43 @@
 
 .editBtn:active {
   transform: translateY(0);
+}
+
+.statusBtn {
+  padding: var(--space-2) var(--space-5);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast);
+}
+
+.statusBtn:hover:not(:disabled) {
+  border-color: var(--color-border-hover);
+}
+
+.statusBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.soldBanner {
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+  z-index: 1;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #000000;
+  background: var(--color-danger);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
 }
 
 .deleteBtn {

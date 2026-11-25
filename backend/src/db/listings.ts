@@ -10,6 +10,7 @@ export interface ListingSummaryRow {
   title: string;
   price: number | null;
   city: string | null;
+  status: string;
   created_at: Date;
   images: ListingImageRow[];
 }
@@ -20,6 +21,7 @@ export interface ListingDetailRow {
   description: string | null;
   price: number | null;
   city: string | null;
+  status: string;
   created_at: Date;
   categoryId: number | null;
   category: { name: string } | null;
@@ -55,7 +57,11 @@ export async function listListings(
   if (filters.userId) {
     conditions.push(`l.user_id = ${addParam(filters.userId)}`);
   } else if (!filters.ids) {
-    conditions.push(`l.status = ${addParam(filters.status ?? "active")}`);
+    conditions.push(
+      filters.status
+        ? `l.status = ${addParam(filters.status)}`
+        : `l.status IN ('active', 'sold')`,
+    );
   }
 
   if (filters.ids) {
@@ -101,7 +107,7 @@ export async function listListings(
   const offsetParam = addParam(offset);
 
   const rowsResult = await pool.query(
-    `SELECT l.id, l.title, l.price, l.city, l.created_at,
+    `SELECT l.id, l.title, l.price, l.city, l.status, l.created_at,
             COALESCE(
               json_agg(
                 json_build_object('url', li.url, 'position', li.position)
@@ -134,7 +140,7 @@ export async function getListingById(
   id: string,
 ): Promise<ListingDetailRow | null> {
   const result = await pool.query(
-    `SELECT l.id, l.title, l.description, l.price, l.city, l.created_at,
+    `SELECT l.id, l.title, l.description, l.price, l.city, l.status, l.created_at,
             l.category_id AS "categoryId",
             CASE WHEN c.id IS NOT NULL
               THEN json_build_object('name', c.name)
@@ -220,6 +226,16 @@ export async function updateListing(
 
 export async function deleteListing(id: string): Promise<void> {
   await pool.query("DELETE FROM listings WHERE id = $1", [id]);
+}
+
+export async function setListingStatus(
+  id: string,
+  status: "active" | "sold",
+): Promise<void> {
+  await pool.query("UPDATE listings SET status = $1 WHERE id = $2", [
+    status,
+    id,
+  ]);
 }
 
 export async function getListingOwnerId(id: string): Promise<string | null> {

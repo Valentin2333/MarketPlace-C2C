@@ -19,6 +19,7 @@ export type ListingRow = {
   title: string;
   price: number | null;
   city: string | null;
+  status: string;
   listing_images: { url: string }[] | null;
 };
 
