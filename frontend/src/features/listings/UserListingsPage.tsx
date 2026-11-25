@@ -11,6 +11,7 @@ type UserListing = {
   title: string;
   price: number | null;
   city: string | null;
+  status: string;
   listing_images: { url: string }[] | null;
 };
 
@@ -112,6 +113,7 @@ export default function UserListingsPage() {
                 price={listing.price}
                 city={listing.city}
                 imageUrl={listing.listing_images?.[0]?.url ?? null}
+                sold={listing.status === "sold"}
                 onClick={saveScroll}
               />
             ))}

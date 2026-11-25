@@ -4,6 +4,7 @@ import {
   fetchListing,
   deleteListingRequest,
   reportListingRequest,
+  setListingStatusRequest,
   type ListingDetail,
 } from "../../lib/listings/listingsApi";
 import { deleteImages } from "../../lib/uploads/uploadsApi";
@@ -40,6 +41,7 @@ export default function ListingDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reporting, setReporting] = useState(false);
+  const [statusSaving, setStatusSaving] = useState(false);
 
   const reqIdRef = useRef(0);
 
@@ -66,6 +68,26 @@ export default function ListingDetailPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const toggleSold = async () => {
+    if (!listing) return;
+    const next = listing.status === "sold" ? "active" : "sold";
+    setStatusSaving(true);
+    try {
+      await setListingStatusRequest(listing.id, next);
+      setListing((prev) => (prev ? { ...prev, status: next } : prev));
+      clearListingsCache();
+      toast.success(
+        next === "sold" ? "Marked as sold." : "Listing is available again.",
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Could not update listing.",
+      );
+    } finally {
+      setStatusSaving(false);
+    }
+  };
 
   const confirmDelete = async () => {
     if (!listing) return;
@@ -161,6 +183,10 @@ export default function ListingDetailPage() {
                 <div className={styles.placeholder}>No image</div>
               )}
 
+              {listing.status === "sold" && (
+                <span className={styles.soldBanner}>Sold</span>
+              )}
+
               <FavoriteButton listingId={listing.id} variant="detail" />
 
               {images.length > 1 && (
@@ -223,13 +249,27 @@ export default function ListingDetailPage() {
             {canDelete && (
               <div className={styles.ownerActions}>
                 {isOwner && (
-                  <button
-                    type="button"
-                    className={styles.editBtn}
-                    onClick={() => setEditOpen(true)}
-                  >
-                    Edit
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className={styles.editBtn}
+                      onClick={() => setEditOpen(true)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.statusBtn}
+                      onClick={toggleSold}
+                      disabled={statusSaving}
+                    >
+                      {statusSaving
+                        ? "Saving…"
+                        : listing.status === "sold"
+                          ? "Mark as available"
+                          : "Mark as sold"}
+                    </button>
+                  </>
                 )}
                 <button
                   type="button"
@@ -274,7 +314,7 @@ export default function ListingDetailPage() {
               <p className={styles.meta}>Unknown seller</p>
             )}
 
-            {seller && !isOwner && (
+            {seller && !isOwner && listing.status !== "sold" && (
               <button
                 type="button"
                 className={styles.messageBtn}

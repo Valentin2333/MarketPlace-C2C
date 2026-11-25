@@ -227,6 +227,47 @@ describe("Listings", () => {
     expect(del.status).toBe(403);
   });
 
+  it("lets only the owner mark a listing as sold", async () => {
+    const owner = await registerTestUser();
+    const stranger = await registerTestUser();
+    const created = await request(app)
+      .post("/listings")
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({
+        title: "Lamp",
+        description: "x",
+        price: 10,
+        city: "Sofia",
+        categoryId,
+      });
+    const id = created.body.id;
+
+    const forbidden = await request(app)
+      .patch(`/listings/${id}/status`)
+      .set("Authorization", `Bearer ${stranger.accessToken}`)
+      .send({ status: "sold" });
+    expect(forbidden.status).toBe(403);
+
+    const invalid = await request(app)
+      .patch(`/listings/${id}/status`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({ status: "removed" });
+    expect(invalid.status).toBe(400);
+
+    const ok = await request(app)
+      .patch(`/listings/${id}/status`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({ status: "sold" });
+    expect(ok.status).toBe(204);
+
+    const detail = await request(app).get(`/listings/${id}`);
+    expect(detail.body.listing.status).toBe("sold");
+
+    const feed = await request(app).get("/listings");
+    const inFeed = feed.body.listings.find((l: { id: string }) => l.id === id);
+    expect(inFeed?.status).toBe("sold");
+  });
+
   it("filters the feed by city", async () => {
     const user = await registerTestUser();
     await request(app)

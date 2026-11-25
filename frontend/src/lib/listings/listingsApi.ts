@@ -7,6 +7,7 @@ export type ListingSummary = {
   title: string;
   price: number | null;
   city: string | null;
+  status: string;
   listing_images: ListingImage[];
 };
 
@@ -16,6 +17,7 @@ export type ListingDetail = {
   description: string | null;
   price: number | null;
   city: string | null;
+  status: string;
   created_at: string | null;
   categoryId: number | null;
   categories: { name: string } | null;
@@ -60,6 +62,7 @@ type ListingsApiResponse = {
     title: string;
     price: number | null;
     city: string | null;
+    status: string;
     images: { url: string; position: number }[];
   }[];
   total: number | null;
@@ -79,6 +82,7 @@ export async function fetchListings(
       title: l.title,
       price: l.price,
       city: l.city,
+      status: l.status,
       listing_images: l.images,
     })),
     total: response.total,
@@ -97,6 +101,7 @@ type ListingDetailApiResponse = {
     description: string | null;
     price: number | null;
     city: string | null;
+    status: string;
     created_at: string;
     categoryId: number | null;
     category: { name: string } | null;
@@ -115,6 +120,7 @@ export async function fetchListing(id: string): Promise<ListingDetail> {
     description: l.description,
     price: l.price,
     city: l.city,
+    status: l.status,
     created_at: l.created_at,
     categoryId: l.categoryId,
     categories: l.category,
@@ -181,6 +187,17 @@ export async function updateListingRequest(
 
 export async function deleteListingRequest(id: string): Promise<void> {
   const response = await apiFetch(`/listings/${id}`, { method: "DELETE" });
+  await throwIfNotOk(response);
+}
+
+export async function setListingStatusRequest(
+  id: string,
+  status: "active" | "sold",
+): Promise<void> {
+  const response = await apiFetch(`/listings/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
   await throwIfNotOk(response);
 }
 

@@ -8,6 +8,7 @@ import {
   replaceListingImages,
   getListingOwnerId,
   listActiveCities,
+  setListingStatus,
 } from "../db/listings.js";
 import { createListingReport } from "../db/reports.js";
 import { broadcastToAll, broadcastToAdmins } from "../ws/server.js";
@@ -189,6 +190,33 @@ router.delete("/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
   await deleteListing(paramId(req));
   res.status(204).send();
 });
+
+router.patch(
+  "/:id/status",
+  requireAuth,
+  async (req: AuthenticatedRequest, res) => {
+    const { status } = req.body ?? {};
+    if (status !== "active" && status !== "sold") {
+      res.status(400).json({ error: "status must be 'active' or 'sold'" });
+      return;
+    }
+
+    const ownerId = await getListingOwnerId(paramId(req));
+    if (!ownerId) {
+      res.status(404).json({ error: "Listing not found" });
+      return;
+    }
+    if (ownerId !== req.user!.id) {
+      res
+        .status(403)
+        .json({ error: "Only the seller can change this listing's status" });
+      return;
+    }
+
+    await setListingStatus(paramId(req), status);
+    res.status(204).send();
+  },
+);
 
 router.post(
   "/:id/reports",

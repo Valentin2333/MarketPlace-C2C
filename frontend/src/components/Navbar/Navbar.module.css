@@ -310,6 +310,17 @@
   }
 }
 
+@media (max-width: 400px) {
+  .nav {
+    gap: var(--space-3);
+    padding: 0 var(--space-4);
+  }
+
+  .logo {
+    font-size: var(--text-base);
+  }
+}
+
 /* Create listing (Sell) — always visible beside the logo */
 .createBtn {
   display: inline-flex;

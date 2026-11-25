@@ -99,6 +99,7 @@ export default function FavoritesPage() {
                 price={listing.price}
                 city={listing.city}
                 imageUrl={listing.listing_images?.[0]?.url ?? null}
+                sold={listing.status === 'sold'}
               />
             ))}
           </div>
