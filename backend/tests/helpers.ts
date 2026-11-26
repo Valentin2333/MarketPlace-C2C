@@ -7,7 +7,7 @@ import { sendEmail } from "../src/email/gmail.js";
 export async function resetDatabase(): Promise<void> {
   await pool.query(`
     TRUNCATE TABLE
-      chat_deletes, user_reports, reports, favorites, messages,
+      reviews, chat_deletes, user_reports, reports, favorites, messages,
       listing_images, listings, uploaded_files, password_reset_tokens,
       refresh_tokens, users
     RESTART IDENTITY CASCADE
